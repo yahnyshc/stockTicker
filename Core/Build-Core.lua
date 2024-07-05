@@ -5,11 +5,14 @@ project "Core"
    targetdir "Binaries/%{cfg.buildcfg}"
    staticruntime "off"
 
-   files { "Source/**.h", "Source/**.cpp" }
+   files { "Source/**.cpp", "Source/**.hpp" }
 
    includedirs
    {
-      "Source"
+      "Source",
+      "/usr/include/boost",
+      "/usr/include/jsoncpp",
+      "/usr/include/openssl"
    }
 
    targetdir ("../Binaries/" .. OutputDir .. "/%{prj.name}")

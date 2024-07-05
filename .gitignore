@@ -9,6 +9,7 @@ Binaries/
 *.sln
 *.log
 Makefile
+ws.cfg
 
 # Exclude
 !Vendor/Binaries

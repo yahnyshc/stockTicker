@@ -10,15 +10,11 @@ project "App"
    includedirs
    {
       "Source",
-
 	  -- Include Core
-	  "../Core/Source"
+	  "../Core/Source",
    }
 
-   links
-   {
-      "Core"
-   }
+   links { "Core", "crypto", "ssl", "cpprest", "boost_program_options", "jsoncpp" }
 
    targetdir ("../Binaries/" .. OutputDir .. "/%{prj.name}")
    objdir ("../Binaries/Intermediates/" .. OutputDir .. "/%{prj.name}")
