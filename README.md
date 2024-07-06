@@ -1,4 +1,4 @@
-# C++ Project Starter Template
+# C++ Stock Ticker Display
 
 ## Getting Started
 1. Clone this repository.
