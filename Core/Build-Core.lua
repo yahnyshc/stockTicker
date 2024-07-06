@@ -12,7 +12,8 @@ project "Core"
       "Source",
       "/usr/include/boost",
       "/usr/include/jsoncpp",
-      "/usr/include/openssl"
+      "/usr/include/openssl",
+      "/usr/include/opencv4"
    }
 
    targetdir ("../Binaries/" .. OutputDir .. "/%{prj.name}")
