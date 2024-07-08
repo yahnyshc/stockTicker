@@ -2,14 +2,16 @@
 #define Session_HPP
 
 #include <cpprest/ws_client.h>
+#include "Config.hpp"
+#include "Core/Database/DataStorage.hpp"
 
 class Session {
 
 public:
-    Session(std::string fileName);
+    Session();
 
     void subscribe();
-    void get_icons();
+    void save_logos();
     void run_forever();
 
 private:
@@ -18,10 +20,8 @@ private:
     std::string symbol_to_logo(const std::string& symbol);
 
     web::websockets::client::websocket_client Client_;
-    std::string token_;
-    std::vector<std::string> symbols_;
-    std::vector<std::string> icon_mappings_;
-
+    Config c = Config("ws.cfg");
+    DataStorage d;
 };
 
 #endif // Session_HPP

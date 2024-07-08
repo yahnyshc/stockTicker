@@ -16,7 +16,8 @@ project "App"
 
    links {  "Core", "crypto", "ssl", "cpprest", 
             "boost_program_options", "jsoncpp", "opencv_core", 
-            "opencv_highgui", "opencv_imgproc", "opencv_imgcodecs" }
+            "opencv_highgui", "opencv_imgproc", "opencv_imgcodecs",
+            "pqxx" }
 
    targetdir ("../Binaries/" .. OutputDir .. "/%{prj.name}")
    objdir ("../Binaries/Intermediates/" .. OutputDir .. "/%{prj.name}")

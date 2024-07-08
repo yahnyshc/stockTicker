@@ -1,5 +1,6 @@
 # Directories
 .vs/
+.vscode/
 Binaries/
 logos/
 
