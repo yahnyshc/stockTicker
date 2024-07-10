@@ -2,8 +2,11 @@
 #define Session_HPP
 
 #include <cpprest/ws_client.h>
+#include <set>
 #include "Config.hpp"
+#include "Core/Images/ImageManipulator.hpp"
 #include "Core/Database/DataStorage.hpp"
+#include "Core/Render/Renderer.hpp"
 
 class Session {
 
@@ -21,7 +24,9 @@ private:
 
     web::websockets::client::websocket_client Client_;
     Config c = Config("ws.cfg");
-    DataStorage d;
+    DataStorage *d = DataStorage::getInstance();
+
+    Renderer r = Renderer(43, 18);
 };
 
 #endif // Session_HPP

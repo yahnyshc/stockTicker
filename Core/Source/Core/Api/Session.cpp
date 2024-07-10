@@ -6,8 +6,7 @@
 #include <filesystem>
 #include <iostream>
 #include "Session.hpp"
-#include "Core/Images/ImageManipulator.hpp"
-#include "Core/Database/DataStorage.hpp"
+
 
 using namespace web::websockets::client;
 using namespace web::http::client;
@@ -33,7 +32,7 @@ void Session::run_forever() {
         if(time(NULL) < next_update_time) continue;
         next_update_time = time(NULL) + 1;
         std::string update = request_json_async().get();
-
+        
         // Parse JSON
         Json::Value root;
         Json::Reader reader;
@@ -49,20 +48,36 @@ void Session::run_forever() {
             continue;
         }
 
+        std::set<std::string> parsed_symbols;
         if (root["type"].asString() == "trade") {
             std::cout << "Received trade" << std::endl;
             // Ensure data is an array
             if (root["data"].isArray()) {
                 for (const auto& trade : root["data"]) {
                     std::string symbol = trade["s"].asString();
+
+                    if (parsed_symbols.find(symbol) != parsed_symbols.end()) continue;
+
                     // price
                     double price = trade["p"].asDouble();
+                    bool temporary_price = true;
 
-                    // save to database
-                    d.save_price(symbol, price);
+                    // update every 60 seconds
+                    if (d->seconds_since_last_update(symbol) >= 60){
+                        // save to database
+                        d->save_price(symbol, price);
+
+                        temporary_price = false;
+
+                        std::cout << "Updated price for symbol " << symbol << " to " << price << std::endl;
+                    }
+                    std::cout << "symbol: " << symbol << "\n\n";
+                    r.render_percentage(symbol, price);
+                    r.render_chart(symbol, price, temporary_price);
+                    parsed_symbols.insert(symbol);
                 }
             }
-            continue;
+            parsed_symbols.clear();
         }
 
     }
@@ -126,7 +141,7 @@ void Session::save_logos() {
         if ( ! fs::exists(symbol_logo) ){            
             fetch_logo(logo).wait();
             ImageManipulator i("logos/"+logo+".png");
-            i.reduce(32, 32);
+            i.reduce(20, 20);
         }
     }
 }

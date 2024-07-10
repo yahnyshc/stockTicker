@@ -2,17 +2,29 @@
 #define DataStorage_HPP
 
 #include <pqxx/pqxx> 
+#include <limits>
+#include <deque>
 
 class DataStorage {
 
 public:
-    DataStorage();
-    ~DataStorage();
+    static DataStorage* getInstance();
 
     void save_price(const std::string symbol, double price);
+    std::deque<double> get_price_history(const std::string symbol, int mPeriod);
+    int seconds_since_last_update(const std::string symbol);
+    double day_start_price(const std::string symbol);
 
 private:
+    static DataStorage* inst_;   // The one, single instance
+    DataStorage(); // private constructor
+    ~DataStorage(); // private destructor
+    DataStorage(const DataStorage&);
+    DataStorage& operator=(const DataStorage&);
+
     std::unique_ptr<pqxx::connection> c;
 };
+
+
 
 #endif // DataStorage_HPP
