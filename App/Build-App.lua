@@ -26,6 +26,9 @@ project "App"
        systemversion "latest"
        defines { "WINDOWS" }
 
+   filter "system:linux"
+       links { "pthread" }  -- Add pthread library for Linux
+
    filter "configurations:Debug"
        defines { "DEBUG" }
        runtime "Debug"
