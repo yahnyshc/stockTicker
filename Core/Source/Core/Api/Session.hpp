@@ -16,13 +16,13 @@ public:
     void subscribe();
     void save_logos();
     void run_forever();
-
 private:
-    pplx::task<std::string> request_json_async();
     pplx::task<void> fetch_logo(const std::string& logo);
     std::string symbol_to_logo(const std::string& symbol);
+    void subscribe_to_symbol(const std::string& symbol);
+    void process_message(const std::string& update);
 
-    web::websockets::client::websocket_client Client_;
+    web::websockets::client::websocket_callback_client Client_;
     Config c = Config("ws.cfg");
     DataStorage *d = DataStorage::getInstance();
 

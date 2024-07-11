@@ -17,80 +17,84 @@ Session::Session() {}
 void Session::subscribe() {
     Client_.connect(U("wss://ws.finnhub.io/?token=" + c.get_token())).wait();
     
+    Client_.set_message_handler([=](websocket_incoming_message msg) {
+        msg.extract_string().then([=](std::string msg) {
+            std::cout << "Received Message: " << msg << std::endl;
+            process_message(msg);
+        }).wait();
+    });
+
+    Client_.set_close_handler([=](websocket_close_status close_status, const utility::string_t& reason, const std::error_code& error) {
+        std::cout << "WebSocket Closed: " << reason << std::endl;
+        subscribe();
+    });
+
     for (const auto& symbol : c.get_symbols()) {
-        std::cout << "Subscribing to the symbol " << symbol << std::endl;
-        websocket_outgoing_message msg;
-        msg.set_utf8_message("{\"type\":\"subscribe\",\"symbol\":\"" + symbol + "\"}");
-        Client_.send(msg).wait();
+        subscribe_to_symbol(symbol);
     }
 }
 
 void Session::run_forever() {
-    auto next_update_time = 0L;
-
-    while(true) {
-        if(time(NULL) < next_update_time) continue;
-        next_update_time = time(NULL) + 1;
-        std::string update = request_json_async().get();
-        
-        // Parse JSON
-        Json::Value root;
-        Json::Reader reader;
-        bool parsingSuccessful = reader.parse(update, root);
-
-        if (!parsingSuccessful) {
-            std::cout << "Error parsing JSON" << std::endl;
-            continue;
-        }
-
-        if (root["type"].asString() == "ping") {
-            std::cout << "Received ping" << std::endl;
-            continue;
-        }
-
-        std::set<std::string> parsed_symbols;
-        if (root["type"].asString() == "trade") {
-            std::cout << "Received trade" << std::endl;
-            // Ensure data is an array
-            if (root["data"].isArray()) {
-                for (const auto& trade : root["data"]) {
-                    std::string symbol = trade["s"].asString();
-
-                    if (parsed_symbols.find(symbol) != parsed_symbols.end()) continue;
-
-                    // price
-                    double price = trade["p"].asDouble();
-                    bool temporary_price = true;
-
-                    // update every 60 seconds
-                    if (d->seconds_since_last_update(symbol) >= 60){
-                        // save to database
-                        d->save_price(symbol, price);
-
-                        temporary_price = false;
-
-                        std::cout << "Updated price for symbol " << symbol << " to " << price << std::endl;
-                    }
-                    std::cout << "symbol: " << symbol << "\n\n";
-                    r.render_percentage(symbol, price);
-                    r.render_chart(symbol, price, temporary_price);
-                    parsed_symbols.insert(symbol);
-                }
-            }
-            parsed_symbols.clear();
-        }
-
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
 
-pplx::task<std::string> Session::request_json_async() {
-    std::string body_str;
+void Session::subscribe_to_symbol(const std::string& symbol) {
+    std::cout << "Subscribing to symbol " << symbol << std::endl;
+    websocket_outgoing_message msg;
+    msg.set_utf8_message("{\"type\":\"subscribe\",\"symbol\":\"" + symbol + "\"}");
+    Client_.send(msg).wait();
+}
 
-    return Client_.receive().then([body_str](websocket_incoming_message ret_msg) {
-        auto msg = ret_msg.extract_string().get();
-        std::cout << "Received Message " << msg << "\n";
-        return msg;
-    });
+void Session::process_message(const std::string& update) {
+    // Parse JSON
+    Json::Value root;
+    Json::Reader reader;
+    bool parsingSuccessful = reader.parse(update, root);
+
+    if (!parsingSuccessful) {
+        std::cout << "Error parsing JSON" << std::endl;
+        return;
+    }
+
+    if (root["type"].asString() == "ping") {
+        std::cout << "Received ping" << std::endl;
+        return;
+    }
+
+    std::set<std::string> parsed_symbols;
+    if (root["type"].asString() == "trade") {
+        std::cout << "Received trade" << std::endl;
+        // Ensure data is an array
+        if (root["data"].isArray()) {
+            for (const auto& trade : root["data"]) {
+                std::string symbol = trade["s"].asString();
+
+                if (parsed_symbols.find(symbol) != parsed_symbols.end()) continue;
+
+                // price
+                double price = trade["p"].asDouble();
+                bool temporary_price = true;
+
+                // update every 60 seconds
+                if (d->seconds_since_last_update(symbol) >= 60){
+                    // save to database
+                    d->save_price(symbol, price);
+
+                    temporary_price = false;
+
+                    std::cout << "Updated price for symbol " << symbol << " to " << price << std::endl;
+                }
+                std::cout << "symbol: " << symbol << "\n\n";
+                r.render_percentage(symbol, price);
+                r.render_chart(symbol, price, temporary_price);
+                parsed_symbols.insert(symbol);
+            }
+        }
+        parsed_symbols.clear();
+    }
+
 }
 
 pplx::task<void> Session::fetch_logo(const std::string& logo){
