@@ -13,7 +13,12 @@ project "Core"
       "/usr/include/boost",
       "/usr/include/jsoncpp",
       "/usr/include/openssl",
-      "/usr/include/opencv4"
+      "/usr/include/opencv4",
+      "../rpi-rgb-led-matrix/include"  -- Include RGB library headers
+   }
+   
+   libdirs { 
+      "../rpi-rgb-led-matrix/lib"  -- Add RGB library path
    }
 
    targetdir ("../Binaries/" .. OutputDir .. "/%{prj.name}")

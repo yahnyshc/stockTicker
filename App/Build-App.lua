@@ -10,14 +10,25 @@ project "App"
    includedirs
    {
       "Source",
-	  -- Include Core
-	  "../Core/Source",
+      -- Include Core
+      "../Core/Source",
+      "../rpi-rgb-led-matrix/include"  -- Include RGB library headers
+   }
+   
+   libdirs { 
+      "../rpi-rgb-led-matrix/lib"  -- Add RGB library path
    }
 
-   links {  "Core", "crypto", "ssl", "cpprest", 
-            "boost_program_options", "jsoncpp", "opencv_core", 
-            "opencv_highgui", "opencv_imgproc", "opencv_imgcodecs",
-            "pqxx" }
+   links {  
+      "Core", "crypto", "ssl", "cpprest", 
+      "boost_program_options", "jsoncpp", "opencv_core", 
+      "opencv_highgui", "opencv_imgproc", "opencv_imgcodecs",
+      "pqxx",
+      "rgbmatrix",  -- Link RGB library
+      "rt",         -- Add rt library
+      "m",          -- Add math library
+      "pthread"     -- Add pthread library
+   }
 
    targetdir ("../Binaries/" .. OutputDir .. "/%{prj.name}")
    objdir ("../Binaries/Intermediates/" .. OutputDir .. "/%{prj.name}")
@@ -25,10 +36,7 @@ project "App"
    filter "system:windows"
        systemversion "latest"
        defines { "WINDOWS" }
-
-   filter "system:linux"
-       links { "pthread" }  -- Add pthread library for Linux
-
+ 
    filter "configurations:Debug"
        defines { "DEBUG" }
        runtime "Debug"

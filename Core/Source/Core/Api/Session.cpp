@@ -91,6 +91,8 @@ void Session::process_message(const std::string& update) {
                 std::cout << "symbol: " << symbol << "\n\n";
                 r.render_percentage(symbol, price);
                 r.render_chart(symbol, price, temporary_price);
+                std::cout << symbol_to_logo(symbol) + ".png\n";
+                r.render_logo("logos/"+symbol_to_logo(symbol)+".png");
                 parsed_symbols.insert(symbol);
             }
         }
