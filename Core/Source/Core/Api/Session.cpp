@@ -37,6 +37,8 @@ void Session::subscribe() {
 }
 
 void Session::run_forever() {
+    std::string primary_symbol = c.get_symbols()[0];
+    r.render_logo("logos/"+symbol_to_logo(primary_symbol)+".png");
     while (true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
@@ -92,7 +94,6 @@ void Session::process_message(const std::string& update) {
                 r.render_percentage(symbol, price);
                 r.render_chart(symbol, price, temporary_price);
                 std::cout << symbol_to_logo(symbol) + ".png\n";
-                r.render_logo("logos/"+symbol_to_logo(symbol)+".png");
                 parsed_symbols.insert(symbol);
             }
         }
@@ -105,19 +106,24 @@ pplx::task<void> Session::fetch_logo(const std::string& logo){
     std::string url = "https://financialmodelingprep.com/image-stock/"+logo+".png";
     std::cout << url << std::endl;
     http_client client(U(url));
-
+    
     return client.request(web::http::methods::GET).then([=](web::http::http_response response) {
         if (response.status_code() == web::http::status_codes::OK) {
-            // Save the response body (logo image) to a file
-            Concurrency::streams::fstream::open_ostream("logos/"+logo+".png").then([=](Concurrency::streams::ostream output) {
-                return response.body().read_to_end(output.streambuf());
-            }).then([=](size_t) {
-                std::cout << "Logo downloaded successfully.\n";
-            }).wait();
+           	// Save the response body (logo image) to a file
+                try {
+            		std::cout << "Current path is " << fs::current_path() << '\n';
+            		Concurrency::streams::fstream::open_ostream("logos/"+logo+".png").then([=](Concurrency::streams::ostream output) {
+                		return response.body().read_to_end(output.streambuf());
+                        } ).then([=](size_t) {
+                		std::cout << "Logo downloaded successfully.\n";
+            		}).wait();
+                } catch(std::exception &e){
+                	std::cerr << "Exception writing file: " << e.what() << "\n";	
+                }
         } else {
-            std::cout << "Failed to download logo. Status code: " << response.status_code() << "\n";
+            	std::cout << "Failed to download logo. Status code: " << response.status_code() << "\n";
         }
-    });
+    }); 
 }
 
 std::string Session::symbol_to_logo(const std::string& symbol){
@@ -149,7 +155,7 @@ void Session::save_logos() {
         if ( ! fs::exists(symbol_logo) ){            
             fetch_logo(logo).wait();
             ImageManipulator i("logos/"+logo+".png");
-            i.reduce(20, 20);
+            i.reduce(23, 23);
         }
     }
 }

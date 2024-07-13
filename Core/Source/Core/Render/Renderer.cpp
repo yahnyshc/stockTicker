@@ -143,7 +143,7 @@ void Renderer::render_percentage(std::string symbol, double last_price) {
 }
 
 void CopyImageToCanvas(const Mat image, Canvas *canvas) {
-    const int offset_x = 0, offset_y = canvas->height() - 20;
+    const int offset_x = 0, offset_y = canvas->height() - 23;
     // Copy all the pixels to the canvas.
     for (size_t y = 0; y < image.rows; ++y) {
         for (size_t x = 0; x < image.cols; ++x) {
