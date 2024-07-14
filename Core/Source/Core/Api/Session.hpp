@@ -26,7 +26,7 @@ private:
     Config c = Config("ws.cfg");
     DataStorage *d = DataStorage::getInstance();
 
-    Renderer r = Renderer(43, 18);
+    Renderer r = Renderer();
 };
 
 #endif // Session_HPP

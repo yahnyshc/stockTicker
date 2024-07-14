@@ -37,8 +37,9 @@ void Session::subscribe() {
 }
 
 void Session::run_forever() {
+    // render primary logo chosen
     std::string primary_symbol = c.get_symbols()[0];
-    r.render_logo("logos/"+symbol_to_logo(primary_symbol)+".png");
+    r.render_logo("logos/"+symbol_to_logo(primary_symbol)+".png", c.get_logo_size());
     while (true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
@@ -155,7 +156,7 @@ void Session::save_logos() {
         if ( ! fs::exists(symbol_logo) ){            
             fetch_logo(logo).wait();
             ImageManipulator i("logos/"+logo+".png");
-            i.reduce(23, 23);
+            i.reduce(c.get_logo_size(), c.get_logo_size());
         }
     }
 }

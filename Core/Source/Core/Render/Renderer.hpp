@@ -8,22 +8,20 @@
 #include <cmath>
 #include <unordered_map>
 #include "Core/Database/DataStorage.hpp"
+#include "Core/Api/Config.hpp"
 #include <cstdlib> // for rand() and srand()
 #include <ctime>   // for time()
 #include <unistd.h>  // for sleep
-#include <signal.h>  // for signal
 
 class Renderer {
 public:
-    Renderer(int chart_width, int chart_height);
+    Renderer();
     ~Renderer();
 
     void render_chart(std::string symbol, double last_price, bool temporary_price);
     void render_percentage(std::string symbol, double last_price);
-    void render_logo(std::string logo);
+    void render_logo(std::string logo, int size);
 private:
-    int chart_width_;
-    int chart_height_;
     double day_start_price_ = 0;
     
     std::unordered_map<std::string, std::deque<double>> past_charts_;
@@ -33,6 +31,8 @@ private:
     void fetch_past_chart(std::string symbol);
 
     rgb_matrix::RGBMatrix* matrix;
+
+    Config c = Config("ws.cfg");
 };
 
 
