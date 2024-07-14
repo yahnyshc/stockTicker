@@ -17,7 +17,7 @@ Config::Config(const std::string fileName) {
     config.add_options()
         ("Logo_Size", po::value<int>()->default_value(20), "Size of logo");
     config.add_options()
-        ("Chart_Height", po::value<int>()->default_value(18), "Height of chart");
+        ("Chart_Height", po::value<int>()->default_value(17), "Height of chart");
     
     boost::program_options::variables_map vm;
 

@@ -16,34 +16,61 @@ using namespace web::websockets::client;
 using namespace web::http::client;
 namespace fs = std::filesystem;
 
+volatile bool interrupt_received = false;
+static void InterruptHandler(int signo) {
+    std::cout << "Interrupt signal received. Stopping the session." << std::endl;
+    interrupt_received = true;
+}
+
 Session::Session() {}
 
 void Session::subscribe() {
-    Client_.connect(U("wss://ws.finnhub.io/?token=" + c.get_token())).wait();
-    
-    Client_.set_message_handler([=](websocket_incoming_message msg) {
-        msg.extract_string().then([=](std::string msg) {
-            std::cout << "Received Message: " << msg << std::endl;
-            process_message(msg);
-        }).wait();
-    });
+    try {
+        Client_.connect(U("wss://ws.finnhub.io/?token=" + c.get_token())).wait();
 
-    Client_.set_close_handler([=](websocket_close_status close_status, const utility::string_t& reason, const std::error_code& error) {
-        std::cout << "WebSocket Closed: " << reason << std::endl;
+        Client_.set_message_handler([=](websocket_incoming_message msg) {
+            if (!interrupt_received && r.get_matrix() != NULL){
+                msg.extract_string().then([=](std::string msg) {
+                    std::cout << "Received Message: " << msg << std::endl;
+                    process_message(msg);
+                }).wait();
+            }
+        });
+
+        Client_.set_close_handler([=](websocket_close_status close_status, const utility::string_t& reason, const std::error_code& error) {
+            std::cout << "WebSocket Closed: " << reason << std::endl;
+            if (!interrupt_received && r.get_matrix() != NULL){
+                std::this_thread::sleep_for(std::chrono::seconds(3));
+                Client_ = web::websockets::client::websocket_callback_client();
+                subscribe();
+            }
+        });
+
+        for (const auto& symbol : c.get_symbols()) {
+            subscribe_to_symbol(symbol);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Exception occurred: " << e.what() << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        Client_ = web::websockets::client::websocket_callback_client();
         subscribe();
-    });
-
-    for (const auto& symbol : c.get_symbols()) {
-        subscribe_to_symbol(symbol);
     }
 }
 
+
 void Session::run_forever() {
+    signal(SIGTERM, InterruptHandler);
+    signal(SIGINT, InterruptHandler);
+    
     // render primary logo chosen
     std::string primary_symbol = c.get_symbols()[0];
     r.render_logo("logos/"+symbol_to_logo(primary_symbol)+".png", c.get_logo_size());
-    r.render_symbol(primary_symbol);
-    while (true) {
+    r.render_symbol(symbol_to_logo(primary_symbol));
+    double last_price = d->get_last_price(primary_symbol);
+    r.render_price(last_price);
+    r.render_gain(primary_symbol, last_price);
+
+    while (!interrupt_received) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
@@ -95,7 +122,8 @@ void Session::process_message(const std::string& update) {
                     std::cout << "Updated price for symbol " << symbol << " to " << price << std::endl;
                 }
                 std::cout << "symbol: " << symbol << "\n\n";
-                r.render_percentage(symbol, price);
+                r.render_gain(symbol, price);
+                r.render_price(price);
                 r.render_chart(symbol, price, temporary_price);
                 std::cout << symbol_to_logo(symbol) + ".png\n";
                 parsed_symbols.insert(symbol);

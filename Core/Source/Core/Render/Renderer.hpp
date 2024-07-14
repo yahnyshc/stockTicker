@@ -8,6 +8,9 @@
 #include <deque>
 #include <cmath>
 #include <unordered_map>
+#include <iomanip>
+#include <sstream>
+#include <cmath>
 #include "Core/Database/DataStorage.hpp"
 #include "Core/Api/Config.hpp"
 #include <cstdlib> // for rand() and srand()
@@ -20,11 +23,13 @@ public:
     ~Renderer();
 
     void render_chart(std::string symbol, double last_price, bool temporary_price);
-    void render_percentage(std::string symbol, double last_price);
+    void render_gain(std::string symbol, double last_price);
     void render_logo(std::string logo, int size);
     void render_symbol(std::string symbol);
+    void render_price(double last_price);
+    rgb_matrix::RGBMatrix* get_matrix();
 private:
-    double day_start_price_ = 0;
+    double closed_market_price_ = 0;
     
     std::unordered_map<std::string, std::deque<double>> past_charts_;
 
@@ -38,7 +43,5 @@ private:
     Config c = Config("ws.cfg");
 
 };
-
-
 
 #endif // Renderer_HPP

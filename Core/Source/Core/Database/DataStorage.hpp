@@ -13,6 +13,8 @@ public:
     void save_price(const std::string symbol, double price);
     std::deque<double> get_price_history(const std::string symbol, int mPeriod);
     int seconds_since_last_update(const std::string symbol);
+    double closed_market_price(const std::string symbol);
+    double get_last_price(const std::string symbol);
     double day_start_price(const std::string symbol);
 
 private:

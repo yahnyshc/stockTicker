@@ -110,6 +110,56 @@ int DataStorage::seconds_since_last_update(const std::string symbol) {
     return seconds;
 }
 
+double DataStorage::get_last_price(const std::string symbol) {
+    double price = 0.0;
+    try {
+        std::string sql = "SELECT price FROM ticker_history WHERE symbol = '" + symbol + "'\
+                        ORDER BY time \
+                        DESC LIMIT 1;";
+        
+        // Create a non-transactional object
+        pqxx::nontransaction n(*c);    
+
+        // Execute SQL query
+        pqxx::result res = n.exec(sql);
+
+        // Print results
+        for (auto row : res) {
+            price = std::stod(row[0].c_str());
+        }
+    } catch (const std::exception &e) {
+        std::cerr << e.what() << std::endl;
+    }
+    return price;
+} 
+
+double DataStorage::closed_market_price(const std::string symbol) {
+    double price = 0.0;
+    try {
+        // sql to select price between 21:00 previous day and 8:00 current day
+        std::string sql = "SELECT price \
+                          FROM ticker_history \
+                          WHERE symbol = '" + symbol + "'\
+                          AND time BETWEEN (NOW()::date - interval '1 day' + interval '21 hour') \
+                          AND (NOW()::date + interval '8 hour') \
+                          ORDER BY time DESC LIMIT 1;";
+        
+        // Create a non-transactional object
+        pqxx::nontransaction n(*c);
+
+        // Execute SQL query
+        pqxx::result res = n.exec(sql);
+
+        // Print results
+        for (auto row : res) {
+            price = std::stod(row[0].c_str());
+        }
+    } catch (const std::exception &e) {
+        std::cerr << e.what() << std::endl;
+    }
+    return price;
+}
+
 double DataStorage::day_start_price(const std::string symbol) {
     double price = 0.0;
     try {

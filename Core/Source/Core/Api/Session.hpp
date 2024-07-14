@@ -22,7 +22,7 @@ private:
     void subscribe_to_symbol(const std::string& symbol);
     void process_message(const std::string& update);
 
-    web::websockets::client::websocket_callback_client Client_;
+    web::websockets::client::websocket_callback_client Client_ = web::websockets::client::websocket_callback_client();
     Config c = Config("ws.cfg");
     DataStorage *d = DataStorage::getInstance();
 
