@@ -2,7 +2,7 @@
 
 This project replicates the functionality of real-time LED Stock Ticker displays commonly found in marketplaces like [Etsy Led Stock Ticker](https://www.etsy.com/uk/market/led_stock_ticker).
 
-![Prototype](https://github.com/user-attachments/assets/45b43189-f218-42c4-bcec-dc8e10bd6f71)
+![photo_2024-07-14_17-55-10](https://github.com/user-attachments/assets/a081a98c-491b-454e-b39a-89ed2e6f99b8)
 
 ## Features
 
@@ -63,6 +63,16 @@ Connect the RGB LED Matrix to the Raspberry Pi 4 GPIO pins as per the [rpi-rgb-l
     ```bash
     make
     ./Binaries/<OS>/Debug/App/App
+
+## Video
+
+https://github.com/user-attachments/assets/3c610362-67a1-4644-8a2b-8b2a6e6fb934
+
+
+## Prototype
+
+![Prototype](https://github.com/user-attachments/assets/45b43189-f218-42c4-bcec-dc8e10bd6f71)
+
 
 ## Sources
 - [FinnHub API](https://finnhub.io/): Provides real-time market prices.
