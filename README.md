@@ -10,6 +10,7 @@ This project replicates the functionality of real-time LED Stock Ticker displays
 - **1-Minute Candlestick Charts**: Displays charts using the last received price and historical data stored in a PostgreSQL database.
 - **Daily Gains/Losses**: Shows today's gain or loss in percentage.
 - **Logos Display**: Displays logos for the subscribed items.
+- **Visualization**: Visualization of the above features on the bright RGB LED display using GPIO pins interaction.
 
 ## Hardware Requirements
 
