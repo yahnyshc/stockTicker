@@ -8,7 +8,6 @@ using namespace cv;
 
 Renderer::Renderer() {
     // Initialize the RGB matrix with
-    RGBMatrix::Options matrix_options;
     rgb_matrix::RuntimeOptions runtime_opt;
 
     std::vector<std::string> matrix_args = {
@@ -135,4 +134,38 @@ void Renderer::render_logo(std::string logo, int size) {
                             blue);
         }
     }
+}
+
+static bool FullSaturation(const rgb_matrix::Color &c) {
+  return (c.r == 0 || c.r == 255)
+    && (c.g == 0 || c.g == 255)
+    && (c.b == 0 || c.b == 255);
+}
+
+void Renderer::render_symbol(std::string symbol) {
+    rgb_matrix::Color font_color(255, 255, 255);
+    rgb_matrix::Color bg_color(0, 0, 0);
+
+    const char *bdf_font_file = "fonts/5x7.bdf";
+    int x_orig = 2;
+    int y_orig = 1;
+    int letter_spacing = 0;
+    
+    //Load font. This needs to be a filename with a bdf bitmap font.
+    rgb_matrix::Font font;
+    if (!font.LoadFont(bdf_font_file)) {
+        fprintf(stderr, "Couldn't load font '%s'\n", bdf_font_file);
+        exit(1);
+    }
+
+    const bool all_extreme_colors = (matrix_options.brightness == 100)
+        && FullSaturation(font_color)
+        && FullSaturation(bg_color);
+
+    if (all_extreme_colors)
+        matrix->SetPWMBits(1);
+
+    rgb_matrix::DrawText(matrix, font, x_orig, y_orig + font.baseline(),
+                         font_color, &bg_color, symbol.c_str(),
+                         letter_spacing);
 }
