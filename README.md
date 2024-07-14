@@ -1,6 +1,6 @@
 # LED Stock Ticker on Raspberry Pi
 
-This project replicates the functionality of real-time LED Stock Ticker displays commonly found in marketplaces like [Etsy](https://www.etsy.com/uk/market/led_stock_ticker).
+This project replicates the functionality of real-time LED Stock Ticker displays commonly found in marketplaces like [Etsy Led Stock Ticker](https://www.etsy.com/uk/market/led_stock_ticker).
 
 ![Prototype](https://github.com/user-attachments/assets/45b43189-f218-42c4-bcec-dc8e10bd6f71)
 
