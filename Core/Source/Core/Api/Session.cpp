@@ -3,10 +3,12 @@
 #include <cpprest/http_client.h>
 #include <cpprest/filestream.h>
 #include <cpprest/streams.h>
+#include <opencv2/opencv.hpp>
 #include <filesystem>
 #include <iostream>
 #include <thread>
 #include <chrono>
+
 #include "Session.hpp"
 
 
@@ -112,7 +114,6 @@ pplx::task<void> Session::fetch_logo(const std::string& logo){
         if (response.status_code() == web::http::status_codes::OK) {
            	// Save the response body (logo image) to a file
                 try {
-            		std::cout << "Current path is " << fs::current_path() << '\n';
             		Concurrency::streams::fstream::open_ostream("logos/"+logo+".png").then([=](Concurrency::streams::ostream output) {
                 		return response.body().read_to_end(output.streambuf());
                         } ).then([=](size_t) {
@@ -153,7 +154,7 @@ void Session::save_logos() {
         std::string logo_path = "logos/" + logo + ".png";
         fs::path symbol_logo{logo_path};
 
-        if ( ! fs::exists(symbol_logo) ){            
+        if ( ! fs::exists(symbol_logo) || cv::imread(logo_path).size().width != c.get_logo_size() ){            
             fetch_logo(logo).wait();
             ImageManipulator i("logos/"+logo+".png");
             i.reduce(c.get_logo_size(), c.get_logo_size());

@@ -6,11 +6,6 @@ using rgb_matrix::RGBMatrix;
 using rgb_matrix::FrameCanvas;
 using namespace cv;
 
-static Mat load_image(std::string filename) {
-    Mat img = imread(filename, IMREAD_COLOR | IMREAD_IGNORE_ORIENTATION); //loading an image//
-    return img;
-}
-
 Renderer::Renderer() {
     // Initialize the RGB matrix with
     RGBMatrix::Options matrix_options;
@@ -124,7 +119,7 @@ void Renderer::render_percentage(std::string symbol, double last_price) {
 }
 
 void Renderer::render_logo(std::string logo, int size) {
-    Mat image = load_image(logo);
+    Mat image = imread(logo, IMREAD_COLOR | IMREAD_IGNORE_ORIENTATION);
 
     const int offset_x = 0, offset_y = matrix->height() - size;
     // Copy all the pixels to the matrix.
