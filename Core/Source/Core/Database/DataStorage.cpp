@@ -80,7 +80,7 @@ std::deque<double> DataStorage::get_price_history(const std::string symbol, int 
         ),
         filled_data AS (
             SELECT ft.time,
-                COALESCE(th.price, 0) AS price
+                COALESCE(th.price, -1) AS price
             FROM filled_times ft
             LEFT JOIN ticker_history th ON th.time >= ft.time - interval '60 seconds' -- lower bound
                                         AND th.time < ft.time -- upper bound 

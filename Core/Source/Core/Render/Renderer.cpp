@@ -90,7 +90,7 @@ void Renderer::update_chart(std::string symbol, double last_price, bool temporar
 
         // min value in the chart
         double min_value = std::numeric_limits<double>::max(); // Initialize with a large value
-        for (double num : rendered_chart) if (num != 0 && num < min_value) min_value = num;
+        for (double num : rendered_chart) if (num != -1 && num < min_value) min_value = num;
 
         // max value in the chart
         double max_value = *std::max_element(rendered_chart.begin(), rendered_chart.end());
@@ -99,10 +99,13 @@ void Renderer::update_chart(std::string symbol, double last_price, bool temporar
 
         // normalize the chart
         for(int i = 0; i < rendered_chart.size(); i += 1){
-            if (min_value != max_value){
+            if (rendered_chart[i] < 0){
+                continue;
+            }
+            else if (min_value != max_value){
                 rendered_chart[i] = ((rendered_chart[i] - min_value) / (double)(max_value - min_value)) * c.get_chart_height();
             }
-            else{
+            else {
                 rendered_chart[i] = 0;
             } 
         }
@@ -129,6 +132,9 @@ void Renderer::update_chart(std::string symbol, double last_price, bool temporar
         for(int y = c.get_chart_height(); y >= 0; y -= 1){
             for(int x = 0; x < rendered_chart_width; x += 1){
                 matrix->SetPixel(x + offset_x, matrix->height() - y - 1, 0, 0, 0);
+                // skip missing timepoints
+                if (rendered_chart[x] == -1) continue;
+
                 if (y == (int)rendered_chart[x]){
                     matrix->SetPixel(x + offset_x, matrix->height() - y - 1, 0, 255, 77);
                 }
@@ -208,7 +214,7 @@ void Renderer::render_gain(std::string symbol, double last_price) {
     }
 
     double percentage = 0;
-    if (closed_market_prices_[symbol] != 0.0) {
+    if (closed_market_prices_[symbol] != 0.0 && last_price != 0.0) {
         percentage = ((last_price - closed_market_prices_[symbol]) / closed_market_prices_[symbol]) * 100;
     }
     std::ostringstream stream;
@@ -219,9 +225,9 @@ void Renderer::render_gain(std::string symbol, double last_price) {
     }
 
     rgb_matrix::Color font_color;    
-    if (percentage > 0){
+    if (percentage > 0.0){
         font_color = rgb_matrix::Color(0, 255, 0);
-    } else if (percentage < 0){
+    } else if (percentage < 0.0){
         font_color = rgb_matrix::Color(255, 0, 0);
     } else {
         font_color = rgb_matrix::Color(255, 255, 255);
@@ -241,7 +247,7 @@ void Renderer::render_gain(std::string symbol, double last_price) {
 
     // clear previous text
     for (int y = y_orig; y < y_orig + font.baseline(); y += 1) {
-        for (int x = x_orig-4; x < std::min(static_cast<int>(x_orig + (todays_gain.length()+1)*4), 64); x += 1) {
+        for (int x = x_orig-4*2; x < std::min(static_cast<int>(x_orig + (todays_gain.length()+1)*4), 64); x += 1) {
             matrix->SetPixel(x, y, 0, 0, 0);
         }
     }
