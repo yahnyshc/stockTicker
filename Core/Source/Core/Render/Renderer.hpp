@@ -22,26 +22,27 @@ public:
     Renderer();
     ~Renderer();
 
-    void render_chart(std::string symbol, double last_price, bool temporary_price);
+    void update_chart(std::string symbol, double last_price, bool temporary_price, bool to_render);
     void render_gain(std::string symbol, double last_price);
     void render_logo(std::string logo, int size);
     void render_symbol(std::string symbol);
     void render_price(double last_price);
     rgb_matrix::RGBMatrix* get_matrix();
 private:
-    double closed_market_price_ = 0;
+    std::unordered_map<std::string, double> closed_market_prices_;
     
     std::unordered_map<std::string, std::deque<double>> past_charts_;
 
     DataStorage *d = DataStorage::getInstance();
 
-    void fetch_past_chart(std::string symbol);
+    void fetch_past_chart(std::string symbol, int chart_width);
 
     rgb_matrix::RGBMatrix* matrix;
     rgb_matrix::RGBMatrix::Options matrix_options;
 
     Config c = Config("ws.cfg");
 
+    bool logo_rendered = false;
 };
 
 #endif // Renderer_HPP

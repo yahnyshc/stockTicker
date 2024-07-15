@@ -58,7 +58,6 @@ Config::Config(const std::string fileName) {
 
     if (vm.count("Chart_Height")) {
         chart_height_ = vm["Chart_Height"].as<int>();
-        chart_width_ = 64 - logo_size_ - 1;
     } else {
         std::cerr << "Chart_Height is not defined in the configuration file" << std::endl;
         return;
@@ -83,8 +82,4 @@ int Config::get_logo_size() {
 
 int Config::get_chart_height() {
     return chart_height_;
-}
-
-int Config::get_chart_width() {
-    return chart_width_;
 }

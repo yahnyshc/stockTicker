@@ -18,8 +18,10 @@ namespace fs = std::filesystem;
 
 volatile bool interrupt_received = false;
 static void InterruptHandler(int signo) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     std::cout << "Interrupt signal received. Stopping the session." << std::endl;
     interrupt_received = true;
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
 Session::Session() {}
@@ -57,21 +59,36 @@ void Session::subscribe() {
     }
 }
 
-
-void Session::run_forever() {
-    signal(SIGTERM, InterruptHandler);
-    signal(SIGINT, InterruptHandler);
-    
-    // render primary logo chosen
-    std::string primary_symbol = c.get_symbols()[0];
+void Session::render_primary_symbol() {
+    r.get_matrix()->Fill(0, 0, 0);
     r.render_logo("logos/"+symbol_to_logo(primary_symbol)+".png", c.get_logo_size());
     r.render_symbol(symbol_to_logo(primary_symbol));
     double last_price = d->get_last_price(primary_symbol);
     r.render_price(last_price);
     r.render_gain(primary_symbol, last_price);
+    r.update_chart(primary_symbol, last_price, true, true);
+}
 
+
+void Session::run_forever() {
+    int primary_symbol_index = 0;
+
+    signal(SIGTERM, InterruptHandler);
+    signal(SIGINT, InterruptHandler);
+    
+    // render primary logo chosen
+    primary_symbol = c.get_symbols()[primary_symbol_index];
+    render_primary_symbol();
+
+    auto next_update_time = 0L;
     while (!interrupt_received) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        if(time(NULL) > next_update_time) {
+            // move on to next subscription
+            primary_symbol_index = (primary_symbol_index + 1) % c.get_symbols().size();
+            primary_symbol = c.get_symbols()[primary_symbol_index];
+            render_primary_symbol();
+            next_update_time = time(NULL) + 5;
+        }
     }
 }
 
@@ -110,6 +127,8 @@ void Session::process_message(const std::string& update) {
 
                 // price
                 double price = trade["p"].asDouble();
+                if ( ! price ) continue;
+
                 bool temporary_price = true;
 
                 // update every 60 seconds
@@ -120,12 +139,15 @@ void Session::process_message(const std::string& update) {
                     temporary_price = false;
 
                     std::cout << "Updated price for symbol " << symbol << " to " << price << std::endl;
+                }                
+
+                if (symbol == primary_symbol){
+                    std::cout << "symbol: " << symbol << "\n\n";
+                    r.render_price(price);
+                    r.render_gain(symbol, price);
                 }
-                std::cout << "symbol: " << symbol << "\n\n";
-                r.render_gain(symbol, price);
-                r.render_price(price);
-                r.render_chart(symbol, price, temporary_price);
-                std::cout << symbol_to_logo(symbol) + ".png\n";
+                r.update_chart(symbol, price, temporary_price, symbol == primary_symbol);
+
                 parsed_symbols.insert(symbol);
             }
         }
@@ -136,25 +158,25 @@ void Session::process_message(const std::string& update) {
 
 pplx::task<void> Session::fetch_logo(const std::string& logo){
     std::string url = "https://financialmodelingprep.com/image-stock/"+logo+".png";
-    std::cout << url << std::endl;
-    http_client client(U(url));
+    http_client client(url);
     
     return client.request(web::http::methods::GET).then([=](web::http::http_response response) {
         if (response.status_code() == web::http::status_codes::OK) {
-           	// Save the response body (logo image) to a file
+            // Save the response body (logo image) to a file
                 try {
-            		Concurrency::streams::fstream::open_ostream("logos/"+logo+".png").then([=](Concurrency::streams::ostream output) {
-                		return response.body().read_to_end(output.streambuf());
+                    Concurrency::streams::fstream::open_ostream("logos/"+logo+".png").then([=](Concurrency::streams::ostream output) {
+                        return response.body().read_to_end(output.streambuf());
                         } ).then([=](size_t) {
-                		std::cout << "Logo downloaded successfully.\n";
-            		}).wait();
+                        std::cout << "Logo downloaded successfully.\n";
+                    }).wait();
                 } catch(std::exception &e){
-                	std::cerr << "Exception writing file: " << e.what() << "\n";	
+                    std::cerr << "Exception writing file: " << e.what() << "\n";	
                 }
         } else {
-            	std::cout << "Failed to download logo. Status code: " << response.status_code() << "\n";
+            std::cout << "Failed to download logo. Status code: " << response.status_code() << "\n";
         }
     }); 
+    
 }
 
 std::string Session::symbol_to_logo(const std::string& symbol){
@@ -183,10 +205,17 @@ void Session::save_logos() {
         std::string logo_path = "logos/" + logo + ".png";
         fs::path symbol_logo{logo_path};
 
-        if ( ! fs::exists(symbol_logo) || cv::imread(logo_path).size().width != c.get_logo_size() ){            
-            fetch_logo(logo).wait();
-            ImageManipulator i("logos/"+logo+".png");
-            i.reduce(c.get_logo_size(), c.get_logo_size());
+        if ( ! fs::exists(symbol_logo) || cv::imread(logo_path).size().width != c.get_logo_size() ){     
+            try{
+                fetch_logo(logo).wait();
+            }  catch(std::exception &e){
+                std::cerr << "Logo does not exists on the website. Try adding Icon_Mappings value to the config file.\n";
+            }         
+            
+            if ( fs::exists(fs::path{"logos/"+logo+".png"}) ){
+                ImageManipulator i("logos/"+logo+".png");
+                i.reduce(c.get_logo_size(), c.get_logo_size());
+            }
         }
     }
 }

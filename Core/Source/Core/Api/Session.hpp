@@ -21,12 +21,15 @@ private:
     std::string symbol_to_logo(const std::string& symbol);
     void subscribe_to_symbol(const std::string& symbol);
     void process_message(const std::string& update);
+    void render_primary_symbol();
 
     web::websockets::client::websocket_callback_client Client_ = web::websockets::client::websocket_callback_client();
     Config c = Config("ws.cfg");
     DataStorage *d = DataStorage::getInstance();
 
     Renderer r = Renderer();
+
+    std::string primary_symbol;
 };
 
 #endif // Session_HPP
