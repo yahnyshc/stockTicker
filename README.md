@@ -59,7 +59,7 @@ Don't forget to install the necessary [Adafruit-Hat drivers](https://learn.adafr
     Logo_Size=23
 
     # Determines whether to display logos or instead display full 64 column price chart.
-    Render_Logos=True
+    Render_Logos=true
     ...
     # See Config.cpp to find out about more config options
 
