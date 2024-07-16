@@ -42,7 +42,7 @@ private:
 
     Config c = Config("ws.cfg");
 
-    bool logo_rendered = false;
+    bool logo_rendered = c.get_bool_render_logos();
 };
 
 #endif // Renderer_HPP

@@ -3,12 +3,13 @@
 
 #include <cpprest/ws_client.h>
 #include <set>
+#include <memory>
 #include "Config.hpp"
 #include "Core/Images/ImageManipulator.hpp"
 #include "Core/Database/DataStorage.hpp"
 #include "Core/Render/Renderer.hpp"
 
-class Session {
+class Session : public std::enable_shared_from_this<Session>{
 
 public:
     Session();
@@ -23,7 +24,9 @@ private:
     void process_message(const std::string& update);
     void render_primary_symbol();
 
-    web::websockets::client::websocket_callback_client Client_ = web::websockets::client::websocket_callback_client();
+    void reconnect();
+
+    std::shared_ptr<web::websockets::client::websocket_callback_client> Client_ = std::make_shared<web::websockets::client::websocket_callback_client>();
     Config c = Config("ws.cfg");
     DataStorage *d = DataStorage::getInstance();
 

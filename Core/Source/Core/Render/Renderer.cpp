@@ -127,6 +127,11 @@ void Renderer::update_chart(std::string symbol, double last_price, bool temporar
                 matrix->SetPixel(offset_x-1, matrix->height() - y - 1, 0, 0, 0);
             } 
         }
+
+        // run through rendered chart and remove everything before first non -1 value
+        while(rendered_chart[0] == -1){
+            rendered_chart.erase(rendered_chart.begin());
+        }
         
         int rendered_chart_width = rendered_chart.size();
         for(int y = c.get_chart_height(); y >= 0; y -= 1){
@@ -157,6 +162,10 @@ void Renderer::update_chart(std::string symbol, double last_price, bool temporar
 }
 
 void Renderer::render_logo(std::string logo, int size) {
+    if ( ! c.get_bool_render_logos() ){
+        logo_rendered = false; 
+        return;
+    }
     if ( ! fs::exists(fs::path{logo}) ){
         logo_rendered = false; 
         std::cout << "Logo not found: " << logo << std::endl;

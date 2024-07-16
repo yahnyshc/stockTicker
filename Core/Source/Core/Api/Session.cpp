@@ -16,35 +16,37 @@ using namespace web::websockets::client;
 using namespace web::http::client;
 namespace fs = std::filesystem;
 
+volatile long long last_update_time = time(NULL);
 volatile bool interrupt_received = false;
+volatile bool reconnecting = false;
+
 static void InterruptHandler(int signo) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    std::cout << "Interrupt signal received. Stopping the session." << std::endl;
     interrupt_received = true;
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::cout << "Interrupt signal received. Stopping the session." << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(2));
 }
 
 Session::Session() {}
 
 void Session::subscribe() {
+    std::cout << "Subscribing to symbols..." << std::endl;
     try {
-        Client_.connect(U("wss://ws.finnhub.io/?token=" + c.get_token())).wait();
+        auto self = shared_from_this();
+        Client_->connect(U("wss://ws.finnhub.io/?token=" + c.get_token())).wait();
 
-        Client_.set_message_handler([=](websocket_incoming_message msg) {
-            if (!interrupt_received && r.get_matrix() != NULL){
-                msg.extract_string().then([=](std::string msg) {
+        Client_->set_message_handler([self](websocket_incoming_message msg) {
+            if (!reconnecting && !interrupt_received && self->r.get_matrix() != nullptr) {
+                msg.extract_string().then([self](std::string msg) {
                     std::cout << "Received Message: " << msg << std::endl;
-                    process_message(msg);
+                    self->process_message(msg);
                 }).wait();
             }
         });
 
-        Client_.set_close_handler([=](websocket_close_status close_status, const utility::string_t& reason, const std::error_code& error) {
+        Client_->set_close_handler([self](websocket_close_status close_status, const utility::string_t& reason, const std::error_code& error) {
             std::cout << "WebSocket Closed: " << reason << std::endl;
-            if (!interrupt_received && r.get_matrix() != NULL){
-                std::this_thread::sleep_for(std::chrono::seconds(3));
-                Client_ = web::websockets::client::websocket_callback_client();
-                subscribe();
+            if (!reconnecting && !interrupt_received && self->r.get_matrix() != nullptr) {
+                self->reconnect();
             }
         });
 
@@ -54,9 +56,17 @@ void Session::subscribe() {
     } catch (const std::exception& e) {
         std::cerr << "Exception occurred: " << e.what() << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(3));
-        Client_ = web::websockets::client::websocket_callback_client();
-        subscribe();
+        reconnect();
     }
+}
+
+void Session::reconnect() {
+    reconnecting = true;
+    std::cout << "Reconnecting..." << std::endl;
+    Client_->close().wait();
+    Client_ = std::make_shared<web::websockets::client::websocket_callback_client>();
+    subscribe();
+    reconnecting = false;
 }
 
 void Session::render_primary_symbol() {
@@ -80,7 +90,7 @@ void Session::run_forever() {
     primary_symbol = c.get_symbols()[primary_symbol_index];
     render_primary_symbol();
 
-    auto next_update_time = 0L;
+    long long next_update_time = time(NULL) + 5;
     while (!interrupt_received) {
         if(time(NULL) > next_update_time) {
             // move on to next subscription
@@ -89,14 +99,23 @@ void Session::run_forever() {
             render_primary_symbol();
             next_update_time = time(NULL) + 5;
         }
+        // if not trades received in last 30 seconds, resubscribe
+        if (time(NULL) > last_update_time + 30) {
+            reconnect();
+            last_update_time = time(NULL);
+        }
     }
+
+    Client_->close().wait();
+    Client_.reset();
+    std::cout << "Session stopped" << std::endl;
 }
 
 void Session::subscribe_to_symbol(const std::string& symbol) {
     std::cout << "Subscribing to symbol " << symbol << std::endl;
     websocket_outgoing_message msg;
     msg.set_utf8_message("{\"type\":\"subscribe\",\"symbol\":\"" + symbol + "\"}");
-    Client_.send(msg).wait();
+    Client_->send(msg).wait();
 }
 
 void Session::process_message(const std::string& update) {
@@ -117,6 +136,7 @@ void Session::process_message(const std::string& update) {
 
     std::set<std::string> parsed_symbols;
     if (root["type"].asString() == "trade") {
+        last_update_time = time(NULL);
         std::cout << "Received trade" << std::endl;
         // Ensure data is an array
         if (root["data"].isArray()) {

@@ -18,6 +18,9 @@ Config::Config(const std::string fileName) {
         ("Logo_Size", po::value<int>()->default_value(20), "Size of logo");
     config.add_options()
         ("Chart_Height", po::value<int>()->default_value(17), "Height of chart");
+    config.add_options()
+        ("Render_Logos", po::value<bool>()->default_value(true), "Whether to render logos or not");
+        
     
     boost::program_options::variables_map vm;
 
@@ -62,6 +65,13 @@ Config::Config(const std::string fileName) {
         std::cerr << "Chart_Height is not defined in the configuration file" << std::endl;
         return;
     }
+
+    if (vm.count("Render_Logos")) {
+        bool_render_logos_ = vm["Render_Logos"].as<bool>();
+    } else {
+        std::cerr << "Render_Logos is not defined in the configuration file" << std::endl;
+        return;
+    }
 }
 
 std::string Config::get_token() {
@@ -82,4 +92,8 @@ int Config::get_logo_size() {
 
 int Config::get_chart_height() {
     return chart_height_;
+}
+
+bool Config::get_bool_render_logos() {
+    return bool_render_logos_;
 }
