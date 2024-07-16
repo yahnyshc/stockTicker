@@ -6,10 +6,11 @@ This project replicates the functionality of real-time LED Stock Ticker displays
 
 ## Features
 
-- **Real-time Market Prices**: Fetches real-time prices for stocks, ETFs, and cryptocurrencies using the [FinnHub API](https://finnhub.io).
-- **1-Minute Candlestick Charts**: Displays charts using the last received price and historical data stored in a PostgreSQL database.
+- **Real-time Market Prices**: Fetches real-time prices for stocks, ETFs, and cryptocurrencies using websocket connection with [FinnHub API](https://finnhub.io).
+- **1-Minute Candlestick Charts**: Displays chart(up to 64 columns) using the last received price and past data stored in a PostgreSQL database.
 - **Daily Gains/Losses**: Shows today's gain or loss in percentage.
 - **Logos Display**: Displays logos for the subscribed items.
+- **Multiple subscriptions** When multiple subscriptions are specified in the config file, the ticker switches between them every 5 seconds.
 - **Visualization**: Visualization of the above features on the bright RGB LED display using GPIO pins interaction.
 
 ## Hardware Requirements
@@ -30,8 +31,10 @@ This project replicates the functionality of real-time LED Stock Ticker displays
 Navigate to the Scripts/ directory and run the appropriate setup script for your OS to generate project files.
 
 4. **Connect Hardware**:
-   
+
 Connect the RGB LED Matrix to the Raspberry Pi 4 GPIO pins as per the [rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) library instructions.
+
+Don't forget to install the necessary [Adafruit-Hat drivers](https://learn.adafruit.com/adafruit-rgb-matrix-plus-real-time-clock-hat-for-raspberry-pi/driving-matrices).
 
 5. **Configuration**:
 
@@ -48,11 +51,15 @@ Connect the RGB LED Matrix to the Raspberry Pi 4 GPIO pins as per the [rpi-rgb-l
     Symbol_List=IC MARKETS:2
 
     # Mapping from the symbol name to the logo name on https://financialmodelingprep.com/image-stock/<logo>.png
+    # If no mapping is specified, then the logo will not be rendered and the extended price chart will cover the logo screen section.
     Icon_Mapping=IC MARKETS:1 -> EURUSD
     Icon_Mapping=IC MARKETS:2 -> GBPUSD
     Icon_Mapping=BINANCE:BTCUSDT -> BTCUSD
 
     Logo_Size=23
+
+    # Determines whether to display logos or instead display full 64 column price chart.
+    Render_Logos=true
     ...
     # See Config.cpp to find out about more config options
 
