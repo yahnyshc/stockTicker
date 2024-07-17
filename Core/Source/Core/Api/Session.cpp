@@ -8,6 +8,7 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <algorithm>
 
 #include "Session.hpp"
 
@@ -26,7 +27,12 @@ static void InterruptHandler(int signo) {
     std::this_thread::sleep_for(std::chrono::seconds(2));
 }
 
-Session::Session() {}
+Session::Session() {
+    signal(SIGTERM, InterruptHandler);
+    signal(SIGINT, InterruptHandler);
+
+    for (const auto& symbol : c.get_symbols()) latest_prices_[symbol] = -1;
+}
 
 void Session::subscribe() {
     std::cout << "Subscribing to symbols..." << std::endl;
@@ -35,7 +41,7 @@ void Session::subscribe() {
         Client_->connect(U("wss://ws.finnhub.io/?token=" + c.get_token())).wait();
 
         Client_->set_message_handler([self](websocket_incoming_message msg) {
-            if (!reconnecting && !interrupt_received && self->r.get_matrix() != nullptr) {
+            if ((!interrupt_received) && (self->r.get_matrix() != nullptr)) {
                 msg.extract_string().then([self](std::string msg) {
                     std::cout << "Received Message: " << msg << std::endl;
                     self->process_message(msg);
@@ -45,8 +51,9 @@ void Session::subscribe() {
 
         Client_->set_close_handler([self](websocket_close_status close_status, const utility::string_t& reason, const std::error_code& error) {
             std::cout << "WebSocket Closed: " << reason << std::endl;
-            if (!reconnecting && !interrupt_received && self->r.get_matrix() != nullptr) {
+            if ((!reconnecting) && (!interrupt_received) && (self->r.get_matrix() != nullptr)) {
                 self->reconnect();
+                std::cout << "Reconnected to server." << std::endl;
             }
         });
 
@@ -63,7 +70,31 @@ void Session::subscribe() {
 void Session::reconnect() {
     reconnecting = true;
     std::cout << "Reconnecting..." << std::endl;
-    Client_->close().wait();
+    std::cout << "Closing the old client connection..." << std::endl;
+
+    try {
+        auto close_task = Client_->close();
+        // Check periodically if the task is done, with a timeout of 10 seconds
+        auto start_time = std::chrono::steady_clock::now();
+        auto timeout = std::chrono::seconds(10);
+
+        while (!close_task.is_done()) {
+            if (std::chrono::steady_clock::now() - start_time > timeout) {
+                std::cout << "Closing the WebSocket connection timed out." << std::endl;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+
+        if (close_task.is_done()) {
+            close_task.wait(); // Ensure any exceptions are thrown if the task completed
+            std::cout << "Closed the old client connection." << std::endl;
+        }
+    } catch (const std::exception& e) {
+        std::cout << "Exception occurred while closing the WebSocket: " << e.what() << std::endl;
+    }
+    Client_.reset();
+    std::cout << "Creating new client..." << std::endl;
     Client_ = std::make_shared<web::websockets::client::websocket_callback_client>();
     subscribe();
     reconnecting = false;
@@ -73,18 +104,14 @@ void Session::render_primary_symbol() {
     r.get_matrix()->Fill(0, 0, 0);
     r.render_logo("logos/"+symbol_to_logo(primary_symbol)+".png", c.get_logo_size());
     r.render_symbol(symbol_to_logo(primary_symbol));
-    double last_price = d->get_last_price(primary_symbol);
-    r.render_price(last_price);
-    r.render_gain(primary_symbol, last_price);
-    r.update_chart(primary_symbol, last_price, true, true);
+    r.render_price(primary_symbol, latest_prices_[primary_symbol]);
+    r.render_gain(primary_symbol, latest_prices_[primary_symbol]);
+    r.update_chart(primary_symbol, latest_prices_[primary_symbol], true, true);
 }
 
 
 void Session::run_forever() {
     int primary_symbol_index = 0;
-
-    signal(SIGTERM, InterruptHandler);
-    signal(SIGINT, InterruptHandler);
     
     // render primary logo chosen
     primary_symbol = c.get_symbols()[primary_symbol_index];
@@ -92,6 +119,11 @@ void Session::run_forever() {
 
     long long next_update_time = time(NULL) + 5;
     while (!interrupt_received) {
+        // while we are reconnecting, simply spin and wait
+        while( reconnecting ){
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+
         if(time(NULL) > next_update_time) {
             // move on to next subscription
             primary_symbol_index = (primary_symbol_index + 1) % c.get_symbols().size();
@@ -99,6 +131,7 @@ void Session::run_forever() {
             render_primary_symbol();
             next_update_time = time(NULL) + 5;
         }
+
         // if not trades received in last 30 seconds, resubscribe
         if (time(NULL) > last_update_time + 30) {
             reconnect();
@@ -149,24 +182,7 @@ void Session::process_message(const std::string& update) {
                 double price = trade["p"].asDouble();
                 if ( ! price ) continue;
 
-                bool temporary_price = true;
-
-                // update every 60 seconds
-                if (d->seconds_since_last_update(symbol) >= 60){
-                    // save to database
-                    d->save_price(symbol, price);
-
-                    temporary_price = false;
-
-                    std::cout << "Updated price for symbol " << symbol << " to " << price << std::endl;
-                }                
-
-                if (symbol == primary_symbol){
-                    std::cout << "symbol: " << symbol << "\n\n";
-                    r.render_price(price);
-                    r.render_gain(symbol, price);
-                }
-                r.update_chart(symbol, price, temporary_price, symbol == primary_symbol);
+                latest_prices_[symbol] = price;
 
                 parsed_symbols.insert(symbol);
             }
@@ -174,6 +190,42 @@ void Session::process_message(const std::string& update) {
         parsed_symbols.clear();
     }
 
+    static bool first_save = true;
+    int seconds_since_last_update = d->seconds_since_last_update();
+    if (seconds_since_last_update == std::numeric_limits<int>::max()){
+        seconds_since_last_update = 60;
+    }
+    bool temporary_price = ! (seconds_since_last_update >= 60 && (seconds_since_last_update % 60) < 5);
+    std::cout << "Seconds since last update: " << seconds_since_last_update << std::endl;
+    for (const auto& symbol : c.get_symbols()) {
+        double price = latest_prices_[symbol];
+        if ( ! temporary_price ){
+            if ( price != -1 ){
+                // save to database
+                d->save_price(symbol, price);
+                std::cout << "Saved price: " << symbol << " " << price << std::endl;
+            }
+            latest_prices_[symbol] = -1;
+        }
+
+        if ( ! temporary_price && ! first_save ){
+            // push empty prices if more than one minute since last update
+            for (int i = 0; i < (int)(seconds_since_last_update / 60)-1; i++){
+                r.update_chart(symbol, -1, false, false);
+            }
+        }
+
+        if (symbol == primary_symbol){                
+            r.render_price(symbol, price);
+            r.render_gain(symbol, price);
+        }
+
+        r.update_chart(symbol, price, temporary_price, symbol == primary_symbol);
+    } 
+
+    if ( ! temporary_price ){
+        first_save = false;
+    }
 }
 
 pplx::task<void> Session::fetch_logo(const std::string& logo){

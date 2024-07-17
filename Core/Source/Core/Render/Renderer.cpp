@@ -46,6 +46,11 @@ Renderer::Renderer() {
         std::cerr << "Unable to initialize matrix" << std::endl;
         exit(1);
     }
+
+    // fetch past charts
+    for (const auto& symbol : c.get_symbols()) {
+        fetch_past_chart(symbol, 64);
+    }
 }
 
 Renderer::~Renderer() {
@@ -57,7 +62,7 @@ Renderer::~Renderer() {
 }
 
 void Renderer::fetch_past_chart(std::string symbol, int chart_width) {
-    past_charts_[symbol] = d->get_price_history(symbol, chart_width - 1);
+    past_charts_[symbol] = d->get_price_history(symbol, chart_width);
 }
 
 void Renderer::update_chart(std::string symbol, double last_price, bool temporary_price, bool to_render) {
@@ -65,21 +70,35 @@ void Renderer::update_chart(std::string symbol, double last_price, bool temporar
     int offset_x = logo_rendered ? c.get_logo_size() + 1 : 0;
     int offset_y = 64 - c.get_chart_height();
 
-    if (past_charts_[symbol].empty()) {
-        fetch_past_chart(symbol, 64);
-    }
-    past_charts_[symbol].push_back(last_price);
+    // print symbol
+    std::cout << "symbol: " << symbol << std::endl;
 
     std::cout << "past chart: " << std::endl;
-    // print past chart
     for (int i = offset_x; i < chart_width; i += 1) {
-        std::cout << past_charts_[symbol][i] << "\t";
+        std::cout << past_charts_[symbol][i] << " "; 
     }
     std::cout << std::endl;
+
+    // print last price
+    std::cout << "last price: " << last_price << std::endl; 
+
+    past_charts_[symbol].push_back(last_price);
 
     // make sure chart_ has <width> number of columns
     if (past_charts_[symbol].size() > chart_width) {
         past_charts_[symbol].pop_front();
+    }
+
+    bool has_value = false;
+    for (int i = offset_x; i < chart_width; i += 1) {
+        if (past_charts_[symbol][i] != -1) {
+            has_value = true;
+            break;
+        }
+    }
+
+    if (!has_value) {
+        return;
     }
 
     if (to_render) {
@@ -95,8 +114,6 @@ void Renderer::update_chart(std::string symbol, double last_price, bool temporar
         // max value in the chart
         double max_value = *std::max_element(rendered_chart.begin(), rendered_chart.end());
 
-        std::cout << "Min value: " << min_value << " Max value: " << max_value << std::endl;
-
         // normalize the chart
         for(int i = 0; i < rendered_chart.size(); i += 1){
             if (rendered_chart[i] < 0){
@@ -109,17 +126,6 @@ void Renderer::update_chart(std::string symbol, double last_price, bool temporar
                 rendered_chart[i] = 0;
             } 
         }
-
-        // print the chart
-        for(int i = c.get_chart_height(); i >= 0; i -= 1){
-            for(int j = 0; j < rendered_chart.size(); j += 1){
-                std::cout << (i == 0 || i <= rendered_chart[j] ? "*" : " ");
-            }
-            std::cout << std::endl;
-        }
-
-        // render chart to the bottom right corner
-        std::cout << "chart height: " << c.get_chart_height() << std::endl;
 
         // clear the gap between the chart and the logo
         if (logo_rendered) {
@@ -141,22 +147,22 @@ void Renderer::update_chart(std::string symbol, double last_price, bool temporar
                 if (rendered_chart[x] == -1) continue;
 
                 if (y == (int)rendered_chart[x]){
-                    matrix->SetPixel(x + offset_x, matrix->height() - y - 1, 0, 255, 77);
+                    matrix->SetPixel(x + offset_x, matrix->height() - y - 1, 0, 255, 90);
                 }
                 else if (y == 0 || y < rendered_chart[x]){
                     if ((x > 0 && y > rendered_chart[x - 1]) || 
                         (x < rendered_chart_width-1 && y > rendered_chart[x + 1])){
-                        matrix->SetPixel(x + offset_x, matrix->height() - y - 1, 0, 255, 77);
+                        matrix->SetPixel(x + offset_x, matrix->height() - y - 1, 0, 255, 90);
                     }
                     else {
-                        matrix->SetPixel(x + offset_x, matrix->height() - y - 1, 0, 150, 0);
+                        matrix->SetPixel(x + offset_x, matrix->height() - y - 1, 0, 140, 0);
                     }
                 }          
             }
         }
     }
 
-    if (temporary_price) {
+    if ( temporary_price ) {
         past_charts_[symbol].pop_back();
     }
 }
@@ -181,7 +187,6 @@ void Renderer::render_logo(std::string logo, int size) {
             int blue = image.at<Vec3b>(y, x)[0];
             int green = image.at<Vec3b>(y, x)[1];
             int red = image.at<Vec3b>(y, x)[2];
-            // std::cout << "x: " << x << " y: " << y << " red: " << red << " green: " << green << " blue: " << blue << "\n";
             matrix->SetPixel(x + offset_x, y + offset_y,
                             red,
                             green,
@@ -220,6 +225,10 @@ void Renderer::render_symbol(std::string symbol) {
 void Renderer::render_gain(std::string symbol, double last_price) {
     if (closed_market_prices_[symbol] == 0.0) {
         closed_market_prices_[symbol] = d->closed_market_price(symbol);
+    }
+
+    if (last_price == -1){
+        last_price = d->get_last_price(symbol);
     }
 
     double percentage = 0;
@@ -266,7 +275,11 @@ void Renderer::render_gain(std::string symbol, double last_price) {
                          letter_spacing);
 }
 
-void Renderer::render_price(double last_price) {
+void Renderer::render_price(std::string symbol, double last_price) {
+    if (last_price == -1){
+        last_price = d->get_last_price(symbol);
+    }
+
     std::ostringstream stream;
     stream << std::fixed << std::setprecision(5) << last_price;
     std::string price = stream.str();
@@ -280,7 +293,6 @@ void Renderer::render_price(double last_price) {
     }
 
     price = "$" + price;
-    std::cout << "Last price: " << price << std::endl;
 
     rgb_matrix::Color font_color(255, 255, 255);
     
@@ -297,7 +309,7 @@ void Renderer::render_price(double last_price) {
     }
 
     // clear previous text
-    for (int y = y_orig; y < y_orig + font.baseline(); y += 1) {
+    for (int y = y_orig; y < y_orig + font.baseline()+1; y += 1) {
         for (int x = x_orig-4; x < std::min(static_cast<int>(x_orig + (price.length() + 1) * 4), 64); x += 1){
             matrix->SetPixel(x, y, 0, 0, 0);
         }

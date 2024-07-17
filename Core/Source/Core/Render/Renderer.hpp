@@ -12,7 +12,7 @@
 #include <sstream>
 #include <cmath>
 #include "Core/Database/DataStorage.hpp"
-#include "Core/Api/Config.hpp"
+#include "Core/Config.hpp"
 #include <cstdlib> // for rand() and srand()
 #include <ctime>   // for time()
 #include <unistd.h>  // for sleep
@@ -26,7 +26,7 @@ public:
     void render_gain(std::string symbol, double last_price);
     void render_logo(std::string logo, int size);
     void render_symbol(std::string symbol);
-    void render_price(double last_price);
+    void render_price(std::string symbol, double last_price);
     rgb_matrix::RGBMatrix* get_matrix();
 private:
     std::unordered_map<std::string, double> closed_market_prices_;

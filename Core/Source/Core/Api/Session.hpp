@@ -4,7 +4,7 @@
 #include <cpprest/ws_client.h>
 #include <set>
 #include <memory>
-#include "Config.hpp"
+#include "Core/Config.hpp"
 #include "Core/Images/ImageManipulator.hpp"
 #include "Core/Database/DataStorage.hpp"
 #include "Core/Render/Renderer.hpp"
@@ -33,6 +33,8 @@ private:
     Renderer r = Renderer();
 
     std::string primary_symbol;
+
+    std::unordered_map<std::string, double> latest_prices_;
 };
 
 #endif // Session_HPP
