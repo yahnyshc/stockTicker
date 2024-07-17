@@ -12,6 +12,7 @@ public:
     int get_logo_size();
     int get_chart_height();
     bool get_bool_render_logos();
+    std::string symbol_to_logo(const std::string& symbol);
 private:
     std::string token_;
     std::vector<std::string> symbols_;
