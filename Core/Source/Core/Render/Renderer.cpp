@@ -63,6 +63,7 @@ Renderer::~Renderer() {
 
 void Renderer::fetch_past_chart(std::string symbol, int chart_width) {
     past_charts_[symbol] = d->get_price_history(symbol, chart_width);
+    past_charts_[symbol] = d->get_price_history(symbol, chart_width);
 }
 
 void Renderer::update_chart(std::string symbol, double last_price, bool temporary_price, bool to_render) {
@@ -71,12 +72,19 @@ void Renderer::update_chart(std::string symbol, double last_price, bool temporar
 
     // print symbol
     std::cout << "symbol: " << symbol << std::endl;
+    // print symbol
+    std::cout << "symbol: " << symbol << std::endl;
 
     std::cout << "past chart: " << std::endl;
     for (int i = offset_x; i < MATRIX_WIDTH; i += 1) {
         std::cout << past_charts_[symbol][i] << " "; 
     }
     std::cout << std::endl;
+
+    // print last price
+    std::cout << "last price: " << last_price << std::endl; 
+
+    past_charts_[symbol].push_back(last_price);
 
     // print last price
     std::cout << "last price: " << last_price << std::endl; 
@@ -161,6 +169,7 @@ void Renderer::update_chart(std::string symbol, double last_price, bool temporar
         }
     }
 
+    if ( temporary_price ) {
     if ( temporary_price ) {
         past_charts_[symbol].pop_back();
     }

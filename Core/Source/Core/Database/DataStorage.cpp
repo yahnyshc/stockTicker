@@ -2,9 +2,11 @@
 #include <thread>
 #include <chrono>
 #include <mutex>
+#include <mutex>
 #include "DataStorage.hpp"
 
 DataStorage* DataStorage::inst_ = NULL;
+std::mutex db_mutex;
 std::mutex db_mutex;
 
 DataStorage* DataStorage::getInstance() {
@@ -32,6 +34,7 @@ void DataStorage::connect() {
 void DataStorage::verify_connection() {
     while (!c->is_open()) {
         try {
+        try {
             connect();
             std::this_thread::sleep_for(std::chrono::seconds(3));
         } catch (const std::exception &e) {
@@ -47,6 +50,7 @@ DataStorage::DataStorage(){
 
 DataStorage::~DataStorage(){
     std::lock_guard<std::mutex> lock(db_mutex);
+    std::lock_guard<std::mutex> lock(db_mutex);
     c->disconnect();
 }
 
@@ -58,9 +62,11 @@ void DataStorage::save_price(const std::string symbol, double price) {
 
         /* Create a transactional object. */
         std::lock_guard<std::mutex> lock(db_mutex);
+        std::lock_guard<std::mutex> lock(db_mutex);
         pqxx::work W(*c);
         
         /* Execute SQL query */
+        W.exec(sql);
         W.exec(sql);
         W.commit();
     } catch (const std::exception &e) {
@@ -70,6 +76,7 @@ void DataStorage::save_price(const std::string symbol, double price) {
 
 std::deque<double> DataStorage::get_price_history(const std::string symbol, int mPeriod) {
     verify_connection();
+    std::deque<double> prices;
     std::deque<double> prices;
     prices.clear();
     
@@ -98,11 +105,13 @@ std::deque<double> DataStorage::get_price_history(const std::string symbol, int 
         
         // Create a non-transactional object
         std::lock_guard<std::mutex> lock(db_mutex);
+        std::lock_guard<std::mutex> lock(db_mutex);
         pqxx::nontransaction n(*c);
 
         // Execute SQL query
         pqxx::result res = n.exec(sql);
         
+        // Process results
         // Process results
         for (auto row : res) {
             prices.push_back(std::stod(row[0].c_str()));
@@ -114,6 +123,7 @@ std::deque<double> DataStorage::get_price_history(const std::string symbol, int 
 }
 
 int DataStorage::seconds_since_last_update() {
+int DataStorage::seconds_since_last_update() {
     verify_connection();
     int seconds = std::numeric_limits<int>::max();
     try {
@@ -122,11 +132,13 @@ int DataStorage::seconds_since_last_update() {
         
         // Create a non-transactional object
         std::lock_guard<std::mutex> lock(db_mutex);
+        std::lock_guard<std::mutex> lock(db_mutex);
         pqxx::nontransaction n(*c);
 
         // Execute SQL query
         pqxx::result res = n.exec(sql);
         
+        // Process results
         // Process results
         for (auto row : res) {
             seconds = std::stoi(row[0].c_str());
@@ -147,11 +159,13 @@ double DataStorage::get_last_price(const std::string symbol) {
         
         // Create a non-transactional object
         std::lock_guard<std::mutex> lock(db_mutex);
+        std::lock_guard<std::mutex> lock(db_mutex);
         pqxx::nontransaction n(*c);    
 
         // Execute SQL query
         pqxx::result res = n.exec(sql);
 
+        // Process results
         // Process results
         for (auto row : res) {
             price = std::stod(row[0].c_str());
@@ -167,6 +181,7 @@ double DataStorage::closed_market_price(const std::string symbol) {
     double price = ZERO_PRICE;
     try {
         // SQL to select price closest to 00:00.
+        // SQL to select price closest to 00:00.
         std::string sql = "WITH today_midnight AS ( \
                           SELECT DATE_TRUNC('day', NOW()) AS midnight \
                           ) \
@@ -178,11 +193,13 @@ double DataStorage::closed_market_price(const std::string symbol) {
         
         // Create a non-transactional object
         std::lock_guard<std::mutex> lock(db_mutex);
+        std::lock_guard<std::mutex> lock(db_mutex);
         pqxx::nontransaction n(*c);
 
         // Execute SQL query
         pqxx::result res = n.exec(sql);
 
+        // Process results
         // Process results
         for (auto row : res) {
             price = std::stod(row[0].c_str());
@@ -192,3 +209,4 @@ double DataStorage::closed_market_price(const std::string symbol) {
     }
     return price;
 }
+

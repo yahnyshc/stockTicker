@@ -9,6 +9,7 @@
 #include <thread>
 #include <chrono>
 #include <algorithm>
+#include <algorithm>
 
 #include "Session.hpp"
 
@@ -44,6 +45,7 @@ void Session::subscribe() {
 
         Client_->set_message_handler([self](websocket_incoming_message msg) {
             if ((!interrupt_received) && (self->r.get_matrix() != nullptr)) {
+            if ((!interrupt_received) && (self->r.get_matrix() != nullptr)) {
                 msg.extract_string().then([self](std::string msg) {
                     std::cout << "Received Message: " << msg << std::endl;
                     self->process_message(msg);
@@ -54,7 +56,9 @@ void Session::subscribe() {
         Client_->set_close_handler([self](websocket_close_status close_status, const utility::string_t& reason, const std::error_code& error) {
             std::cout << "WebSocket Closed: " << reason << std::endl;
             if ((!reconnecting) && (!interrupt_received) && (self->r.get_matrix() != nullptr)) {
+            if ((!reconnecting) && (!interrupt_received) && (self->r.get_matrix() != nullptr)) {
                 self->reconnect();
+                std::cout << "Reconnected to server." << std::endl;
                 std::cout << "Reconnected to server." << std::endl;
             }
         });
@@ -97,6 +101,31 @@ void Session::reconnect() {
     }
     Client_.reset();
     std::cout << "Creating new client..." << std::endl;
+    std::cout << "Closing the old client connection..." << std::endl;
+
+    try {
+        auto close_task = Client_->close();
+        // Check periodically if the task is done, with a timeout of 10 seconds
+        auto start_time = std::chrono::steady_clock::now();
+        auto timeout = std::chrono::seconds(10);
+
+        while (!close_task.is_done()) {
+            if (std::chrono::steady_clock::now() - start_time > timeout) {
+                std::cout << "Closing the WebSocket connection timed out." << std::endl;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+
+        if (close_task.is_done()) {
+            close_task.wait(); // Ensure any exceptions are thrown if the task completed
+            std::cout << "Closed the old client connection." << std::endl;
+        }
+    } catch (const std::exception& e) {
+        std::cout << "Exception occurred while closing the WebSocket: " << e.what() << std::endl;
+    }
+    Client_.reset();
+    std::cout << "Creating new client..." << std::endl;
     Client_ = std::make_shared<web::websockets::client::websocket_callback_client>();
     subscribe();
     reconnecting = false;
@@ -111,6 +140,11 @@ void Session::run_forever() {
 
     long long next_update_time = time(NULL) + SCROLLING_TIME;
     while (!interrupt_received) {
+        // while we are reconnecting, simply spin and wait
+        while( reconnecting ){
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+
         // while we are reconnecting, simply spin and wait
         while( reconnecting ){
             std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -174,6 +208,7 @@ void Session::process_message(const std::string& update) {
                 double price = trade["p"].asDouble();
                 if ( ! price ) continue;
 
+                latest_prices_[symbol] = price;
                 latest_prices_[symbol] = price;
 
                 parsed_symbols.insert(symbol);
