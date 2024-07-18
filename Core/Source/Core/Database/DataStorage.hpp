@@ -4,8 +4,11 @@
 #include <pqxx/pqxx> 
 #include <limits>
 #include <deque>
-#include "GlobalParams.hpp"
-#include "LocalParams.hpp"
+
+const std::string DB_NAME = "ticker";
+const std::string DB_USER = "postgres";
+const std::string DB_PASS = "postgres";
+const std::string DB_TABLE = "ticker_history";
 
 class DataStorage {
 

@@ -77,7 +77,7 @@ Config::Config(const std::string fileName) {
 std::string Config::symbol_to_logo(const std::string& symbol){
     std::string logo_identifier = symbol;
 
-    for ( std::string mapping : c.get_icon_mappings() ){
+    for ( std::string mapping : get_icon_mappings() ){
         std::string delimiter = " -> ";
         size_t pos = mapping.find(delimiter);
         std::string token = mapping.substr(0, pos);

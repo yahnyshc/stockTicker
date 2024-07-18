@@ -10,9 +10,7 @@
 #include <chrono>
 #include <algorithm>
 #include <algorithm>
-
 #include "Session.hpp"
-
 
 using namespace web::websockets::client;
 using namespace web::http::client;
@@ -45,7 +43,6 @@ void Session::subscribe() {
 
         Client_->set_message_handler([self](websocket_incoming_message msg) {
             if ((!interrupt_received) && (self->r.get_matrix() != nullptr)) {
-            if ((!interrupt_received) && (self->r.get_matrix() != nullptr)) {
                 msg.extract_string().then([self](std::string msg) {
                     std::cout << "Received Message: " << msg << std::endl;
                     self->process_message(msg);
@@ -56,9 +53,7 @@ void Session::subscribe() {
         Client_->set_close_handler([self](websocket_close_status close_status, const utility::string_t& reason, const std::error_code& error) {
             std::cout << "WebSocket Closed: " << reason << std::endl;
             if ((!reconnecting) && (!interrupt_received) && (self->r.get_matrix() != nullptr)) {
-            if ((!reconnecting) && (!interrupt_received) && (self->r.get_matrix() != nullptr)) {
                 self->reconnect();
-                std::cout << "Reconnected to server." << std::endl;
                 std::cout << "Reconnected to server." << std::endl;
             }
         });
@@ -145,11 +140,6 @@ void Session::run_forever() {
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
-        // while we are reconnecting, simply spin and wait
-        while( reconnecting ){
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-        }
-
         if(time(NULL) > next_update_time) {
             // move on to next subscription
             primary_symbol_index = (primary_symbol_index + 1) % c.get_symbols().size();
@@ -209,7 +199,6 @@ void Session::process_message(const std::string& update) {
                 if ( ! price ) continue;
 
                 latest_prices_[symbol] = price;
-                latest_prices_[symbol] = price;
 
                 parsed_symbols.insert(symbol);
             }
@@ -257,14 +246,14 @@ void Session::process_message(const std::string& update) {
 }
 
 pplx::task<void> Session::fetch_logo(const std::string& logo){
-    std::string url = LOGO_URL+logo+LOGO_EXT;
+    std::string url = LOGO_URL + logo + LOGO_EXT;
     http_client client(url);
     
     return client.request(web::http::methods::GET).then([=](web::http::http_response response) {
         if (response.status_code() == web::http::status_codes::OK) {
             // Save the response body (logo image) to a file
                 try {
-                    Concurrency::streams::fstream::open_ostream(LOGO_DIR+"/"+logo+LOGO_EXT).then([=](Concurrency::streams::ostream output) {
+                    Concurrency::streams::fstream::open_ostream(LOGO_DIR + "/" + logo + LOGO_EXT).then([=](Concurrency::streams::ostream output) {
                         return response.body().read_to_end(output.streambuf());
                         } ).then([=](size_t) {
                         std::cout << "Logo downloaded successfully.\n";

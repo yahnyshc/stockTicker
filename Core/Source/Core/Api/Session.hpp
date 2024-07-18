@@ -8,8 +8,10 @@
 #include "Core/Images/ImageManipulator.hpp"
 #include "Core/Database/DataStorage.hpp"
 #include "Core/Render/Renderer.hpp"
-#include "GlobalParams.hpp"
-#include "LocalParams.hpp"
+#include "Core/GlobalParams.hpp"
+
+const std::string FINNHUB_URL = "wss://ws.finnhub.io/?token=";
+const std::string LOGO_URL = "https://financialmodelingprep.com/image-stock/";
 
 class Session : public std::enable_shared_from_this<Session>{
 

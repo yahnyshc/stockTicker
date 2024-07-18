@@ -11,7 +11,7 @@ logos/
 *.sln
 *.log
 Makefile
-ws.cfg
+*.cfg
 
 # Exclude
 !Vendor/Binaries

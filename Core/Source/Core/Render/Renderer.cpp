@@ -63,7 +63,6 @@ Renderer::~Renderer() {
 
 void Renderer::fetch_past_chart(std::string symbol, int chart_width) {
     past_charts_[symbol] = d->get_price_history(symbol, chart_width);
-    past_charts_[symbol] = d->get_price_history(symbol, chart_width);
 }
 
 void Renderer::update_chart(std::string symbol, double last_price, bool temporary_price, bool to_render) {
@@ -72,19 +71,12 @@ void Renderer::update_chart(std::string symbol, double last_price, bool temporar
 
     // print symbol
     std::cout << "symbol: " << symbol << std::endl;
-    // print symbol
-    std::cout << "symbol: " << symbol << std::endl;
 
     std::cout << "past chart: " << std::endl;
     for (int i = offset_x; i < MATRIX_WIDTH; i += 1) {
         std::cout << past_charts_[symbol][i] << " "; 
     }
     std::cout << std::endl;
-
-    // print last price
-    std::cout << "last price: " << last_price << std::endl; 
-
-    past_charts_[symbol].push_back(last_price);
 
     // print last price
     std::cout << "last price: " << last_price << std::endl; 
@@ -170,7 +162,6 @@ void Renderer::update_chart(std::string symbol, double last_price, bool temporar
     }
 
     if ( temporary_price ) {
-    if ( temporary_price ) {
         past_charts_[symbol].pop_back();
     }
 }
@@ -208,15 +199,16 @@ void Renderer::render_logo(std::string logo, int size) {
 void Renderer::render_symbol(std::string symbol) {
     rgb_matrix::Color font_color(255, 255, 255);
 
-    const char *bdf_font_file = "fonts/5x7.bdf";
+    std::string bdf_font_file = "fonts/"+ std::to_string(SYMBOL_FONT_WIDTH) + \
+                                "x"+std::to_string(SYMBOL_FONT_HEIGHT) +".bdf";
     int x_orig = 2;
     int y_orig = 1;
     int letter_spacing = 0;
     
     //Load font. This needs to be a filename with a bdf bitmap font.
     rgb_matrix::Font font;
-    if (!font.LoadFont(bdf_font_file)) {
-        fprintf(stderr, "Couldn't load font '%s'\n", bdf_font_file);
+    if (!font.LoadFont(bdf_font_file.c_str())) {
+        fprintf(stderr, "Couldn't load font '%s'\n", bdf_font_file.c_str());
         exit(1);
     }
 
@@ -259,7 +251,7 @@ void Renderer::render_gain(std::string symbol, double last_price) {
         font_color = rgb_matrix::Color(255, 255, 255);
     }
 
-    const char *bdf_font_file = "fonts/"+ std::to_string(PERCENTAGE_FONT_WIDTH) + \
+    std::string bdf_font_file = "fonts/"+ std::to_string(PERCENTAGE_FONT_WIDTH) + \
                                 "x"+std::to_string(PERCENTAGE_FONT_HEIGHT) +".bdf";
     int x_orig = MATRIX_WIDTH-todays_gain.length()*PERCENTAGE_FONT_WIDTH;
     int y_orig = 1 + PERCENTAGE_FONT_HEIGHT + 1;
@@ -267,8 +259,8 @@ void Renderer::render_gain(std::string symbol, double last_price) {
     
     //Load font. This needs to be a filename with a bdf bitmap font.
     rgb_matrix::Font font;
-    if (!font.LoadFont(bdf_font_file)) {
-        fprintf(stderr, "Couldn't load font '%s'\n", bdf_font_file);
+    if (!font.LoadFont(bdf_font_file.c_str())) {
+        fprintf(stderr, "Couldn't load font '%s'\n", bdf_font_file.c_str());
         exit(1);
     }
 
@@ -307,7 +299,7 @@ void Renderer::render_price(std::string symbol, double last_price) {
 
     rgb_matrix::Color font_color(255, 255, 255);
     
-    const char *bdf_font_file = "fonts/"+ std::to_string(PRICE_FONT_WIDTH) + \
+    std::string bdf_font_file = "fonts/"+ std::to_string(PRICE_FONT_WIDTH) + \
                                 "x"+std::to_string(PRICE_FONT_HEIGHT) +".bdf";
     int x_orig = logo_rendered ? MATRIX_WIDTH-price.length()*PRICE_FONT_WIDTH : 2;
     int y_orig = logo_rendered ? 1 : 1 + PRICE_FONT_HEIGHT + 1;
@@ -315,8 +307,8 @@ void Renderer::render_price(std::string symbol, double last_price) {
 
     //Load font. This needs to be a filename with a bdf bitmap font.
     rgb_matrix::Font font;
-    if (!font.LoadFont(bdf_font_file)) {
-        fprintf(stderr, "Couldn't load font '%s'\n", bdf_font_file);
+    if (!font.LoadFont(bdf_font_file.c_str())) {
+        fprintf(stderr, "Couldn't load font '%s'\n", bdf_font_file.c_str());
         exit(1);
     }
 
@@ -336,8 +328,8 @@ void Renderer::render_price(std::string symbol, double last_price) {
 
 void Renderer::render_entire_symbol(std::string symbol, double price) {
     matrix->Fill(0, 0, 0);
-    render_logo(LOGO_DIR+"/"+symbol_to_logo(symbol)+LOGO_EXT, c.get_logo_size());
-    render_symbol(symbol_to_logo(symbol));
+    render_logo(LOGO_DIR+"/"+c.symbol_to_logo(symbol)+LOGO_EXT, c.get_logo_size());
+    render_symbol(c.symbol_to_logo(symbol));
     render_price(symbol, price);
     render_gain(symbol, price);
     update_chart(symbol, price, true, true);
