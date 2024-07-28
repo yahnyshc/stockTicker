@@ -5,36 +5,43 @@
 #include "DataStorage.hpp"
 #include "Core/GlobalParams.hpp"
 
-// // to stringify the macroses
-// inline std::string str(const char* s) { return std::string(s); }
+DataStorage* DataStorage::instance_ = nullptr;
+std::mutex dbMutex;
 
-DataStorage* DataStorage::inst_ = NULL;
-std::mutex db_mutex;
-
+// singleton
 DataStorage* DataStorage::getInstance() {
-   if (inst_ == NULL) {
-      inst_ = new DataStorage();
+   if (instance_ == nullptr) {
+      instance_ = new DataStorage();
    }
-   return(inst_);
+   return instance_;
+}
+
+DataStorage::DataStorage(){
+    // connect to PostgreSQL
+    connect();
+}
+
+DataStorage::~DataStorage(){
+    connection_->disconnect();
 }
 
 void DataStorage::connect() {
     try {
-        c = std::make_unique<pqxx::connection>("dbname = "+ DB_NAME +" user = "+ DB_USER+\
-            " password = " + DB_PASS + " \
-            hostaddr = 127.0.0.1 port = 5432");
-        if (c->is_open()) {
-            std::cout << "Opened database successfully: " << c->dbname() << std::endl;
+        connection_ = std::make_unique<pqxx::connection>("dbname=" + DB_NAME + " user=" + DB_USER + 
+            " password=" + DB_PASS + 
+            " hostaddr=127.0.0.1 port=5432");
+        if (connection_->is_open()) {
+            std::cout << "Opened database successfully: " << connection_->dbname() << std::endl;
         } else {
             std::cout << "Can't open database" << std::endl;
         }
-   } catch (const std::exception &e) {
+    } catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
-   }
+    }
 }
 
-void DataStorage::verify_connection() {
-    while (!c->is_open()) {
+void DataStorage::verifyConnection() {
+    while (!connection_->is_open()) {
         try {
             connect();
             std::this_thread::sleep_for(std::chrono::seconds(3));
@@ -44,24 +51,15 @@ void DataStorage::verify_connection() {
     }
 }
 
-DataStorage::DataStorage(){
-    // connect to postgres sql
-    connect();
-}
-
-DataStorage::~DataStorage(){
-    c->disconnect();
-}
-
-void DataStorage::save_price(const std::string symbol, double price) {
-    verify_connection();
+void DataStorage::savePrice(const std::string symbol, double price) {
+    verifyConnection();
     // save to database
     try {
         std::string sql = "INSERT INTO " + DB_TABLE + " VALUES ('" + symbol + "', " + std::to_string(price) + ");";
 
         /* Create a transactional object. */
-        std::lock_guard<std::mutex> lock(db_mutex);
-        pqxx::work W(*c);
+        std::lock_guard<std::mutex> lock(dbMutex);
+        pqxx::work W(*connection_);
         
         /* Execute SQL query */
         W.exec(sql);
@@ -71,8 +69,8 @@ void DataStorage::save_price(const std::string symbol, double price) {
     }
 }
 
-std::deque<double> DataStorage::get_price_history(const std::string symbol, int mPeriod) {
-    verify_connection();
+std::deque<double> DataStorage::getPriceHistory(const std::string symbol, int period) {
+    verifyConnection();
     std::deque<double> prices;
     prices.clear();
     
@@ -81,7 +79,7 @@ std::deque<double> DataStorage::get_price_history(const std::string symbol, int 
         std::string sql = R"(
         WITH filled_times AS (
             SELECT generate_series(
-                now() - interval ')" + std::to_string(mPeriod) + R"( minutes',  -- start time
+                now() - interval ')" + std::to_string(period) + R"( minutes',  -- start time
                 now(),                          -- end time (current time)
                 interval ')" + std::to_string(PRICE_TIME_INTERVAL) + R"( seconds'           -- interval between each timestamp
             ) AS time
@@ -97,11 +95,11 @@ std::deque<double> DataStorage::get_price_history(const std::string symbol, int 
         SELECT price
         FROM filled_data
         ORDER BY time
-        LIMIT )" + std::to_string(mPeriod) + R"(;)";
+        LIMIT )" + std::to_string(period) + R"(;)";
         
         // Create a non-transactional object
-        std::lock_guard<std::mutex> lock(db_mutex);
-        pqxx::nontransaction n(*c);
+        std::lock_guard<std::mutex> lock(dbMutex);
+        pqxx::nontransaction n(*connection_);
 
         // Execute SQL query
         pqxx::result res = n.exec(sql);
@@ -116,16 +114,16 @@ std::deque<double> DataStorage::get_price_history(const std::string symbol, int 
     return prices;
 }
 
-int DataStorage::seconds_since_last_update() {
-    verify_connection();
+int DataStorage::secondsSinceLastUpdate() {
+    verifyConnection();
     int seconds = std::numeric_limits<int>::max();
     try {
         std::string sql = "SELECT EXTRACT(EPOCH FROM (NOW() - MAX(time))) \
                            FROM " + DB_TABLE + ";";
         
         // Create a non-transactional object
-        std::lock_guard<std::mutex> lock(db_mutex);
-        pqxx::nontransaction n(*c);
+        std::lock_guard<std::mutex> lock(dbMutex);
+        pqxx::nontransaction n(*connection_);
 
         // Execute SQL query
         pqxx::result res = n.exec(sql);
@@ -140,8 +138,8 @@ int DataStorage::seconds_since_last_update() {
     return seconds;
 }
 
-double DataStorage::get_last_price(const std::string symbol) {
-    verify_connection();
+double DataStorage::getLastPrice(const std::string symbol) {
+    verifyConnection();
     double price = ZERO_PRICE;
     try {
         std::string sql = "SELECT price FROM " + DB_TABLE + " WHERE symbol = '" + symbol + "'\
@@ -149,8 +147,8 @@ double DataStorage::get_last_price(const std::string symbol) {
                         DESC LIMIT 1;";
         
         // Create a non-transactional object
-        std::lock_guard<std::mutex> lock(db_mutex);
-        pqxx::nontransaction n(*c);    
+        std::lock_guard<std::mutex> lock(dbMutex);
+        pqxx::nontransaction n(*connection_);    
 
         // Execute SQL query
         pqxx::result res = n.exec(sql);
@@ -165,8 +163,8 @@ double DataStorage::get_last_price(const std::string symbol) {
     return price;
 } 
 
-double DataStorage::closed_market_price(const std::string symbol) {
-    verify_connection();
+double DataStorage::closedMarketPrice(const std::string symbol) {
+    verifyConnection();
     double price = ZERO_PRICE;
     try {
         // SQL to select price closest to 00:00.
@@ -180,8 +178,8 @@ double DataStorage::closed_market_price(const std::string symbol) {
                           ASC LIMIT 1;";
         
         // Create a non-transactional object
-        std::lock_guard<std::mutex> lock(db_mutex);
-        pqxx::nontransaction n(*c);
+        std::lock_guard<std::mutex> lock(dbMutex);
+        pqxx::nontransaction n(*connection_);
 
         // Execute SQL query
         pqxx::result res = n.exec(sql);
@@ -195,4 +193,3 @@ double DataStorage::closed_market_price(const std::string symbol) {
     }
     return price;
 }
-

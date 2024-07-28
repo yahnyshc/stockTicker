@@ -12,11 +12,11 @@ project "App"
       "Source",
       -- Include Core
       "../Core/Source",
-      "../rpi-rgb-led-matrix/include"  -- Include RGB library headers
+      -- "../rpi-rgb-led-matrix/include"  -- Include RGB library headers
    }
    
    libdirs { 
-      "../rpi-rgb-led-matrix/lib"  -- Add RGB library path
+      -- "../rpi-rgb-led-matrix/lib"  -- Add RGB library path
    }
 
    links {  
@@ -24,7 +24,7 @@ project "App"
       "boost_program_options", "jsoncpp", "opencv_core", 
       "opencv_highgui", "opencv_imgproc", "opencv_imgcodecs",
       "pqxx",
-      "rgbmatrix",  -- Link RGB library
+      -- "rgbmatrix",  -- Link RGB library
       "rt",         -- Add rt library
       "m",          -- Add math library
       "pthread"     -- Add pthread library

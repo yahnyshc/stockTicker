@@ -1,26 +1,39 @@
-#ifndef Config_HPP
-#define Config_HPP
+#ifndef CONFIG_HPP
+#define CONFIG_HPP
+
+#include <string>
+#include <vector>
 
 class Config {
 
 public:
-    Config(const std::string fileName);
+    // Constructor
+    Config(const std::string& fileName);
 
-    std::string get_token();
-    std::vector<std::string> get_symbols();
-    std::vector<std::string> get_icon_mappings();
-    int get_logo_size();
-    int get_chart_height();
-    bool get_bool_render_logos();
-    std::string symbol_to_logo(const std::string& symbol);
+    // Getter methods
+    std::string getToken() const;
+    std::string getControlToken() const;
+    std::vector<std::string> getSubsList() const;
+    std::vector<std::string> getApiSubsList() const;
+    std::vector<std::string> getLogoSubsList() const;
+    int getLogoSize() const;
+    int getChartHeight() const;
+
+    // Setter methods
+    void setSubsList(const std::vector<std::string>& subsList);
+    void setApiSubsList(const std::vector<std::string>& apiSubsList);
+    void setLogoSubsList(const std::vector<std::string>& logoSubsList);
+
 private:
     std::string token_;
-    std::vector<std::string> symbols_;
-    std::vector<std::string> icon_mappings_;
-    int logo_size_;
-    int chart_height_;
+    std::string controlToken_;
+    std::vector<std::string> subsList_;
+    std::vector<std::string> apiSubsList_;
+    std::vector<std::string> logoSubsList_;
+    int logoSize_;
+    int chartHeight_;
 
-    bool bool_render_logos_;
+    bool boolRenderLogos_;
 };
 
-#endif // Config_HPP
+#endif // CONFIG_HPP

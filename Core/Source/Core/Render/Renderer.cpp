@@ -3,288 +3,283 @@
 #include <algorithm> // for std::min
 #include "Renderer.hpp"
 
-using rgb_matrix::Canvas;
-using rgb_matrix::RGBMatrix;
-using rgb_matrix::FrameCanvas;
+// using rgb_matrix::Canvas;
+// using rgb_matrix::RGBMatrix;
+// using rgb_matrix::FrameCanvas;
 using namespace cv;
 namespace fs = std::filesystem;
 
 Renderer::Renderer() {
-    // Initialize the RGB matrix with
-    rgb_matrix::RuntimeOptions runtime_opt;
+    // // Initialize the RGB matrix with
+    // rgb_matrix::RuntimeOptions runtimeOpt;
 
-    std::vector<std::string> matrix_args = {
-        "program",
-        "--led-cols=" + std::to_string(MATRIX_WIDTH), 
-        "--led-slowdown-gpio=" + std::to_string(GPIO_SLOWDOWN), 
-        "--led-no-hardware-pulse", 
-        "--led-gpio-mapping=" + std::string(GPIO_MAPPING), 
-        "--led-rgb-sequence=" + std::string(RGB_SEQUENCE),
-    };
+    // std::vector<std::string> matrixArgs = {
+    //     "program",
+    //     "--led-cols=" + std::to_string(MATRIX_WIDTH), 
+    //     "--led-slowdown-gpio=" + std::to_string(GPIO_SLOWDOWN), 
+    //     "--led-no-hardware-pulse", 
+    //     "--led-gpio-mapping=" + std::string(GPIO_MAPPING), 
+    //     "--led-rgb-sequence=" + std::string(RGB_SEQUENCE),
+    // };
 
-    // Convert std::vector<std::string> to argc and argv
-    int argc = matrix_args.size();
-    char **argv = new char*[argc];
+    // // Convert std::vector<std::string> to argc and argv
+    // int argc = matrixArgs.size();
+    // char **argv = new char*[argc];
 
-    for (int i = 0; i < argc; ++i) {
-        argv[i] = new char[matrix_args[i].size() + 1];
-        std::strcpy(argv[i], matrix_args[i].c_str());
-    }
+    // for (int i = 0; i < argc; ++i) {
+    //     argv[i] = new char[matrixArgs[i].size() + 1];
+    //     std::strcpy(argv[i], matrixArgs[i].c_str());
+    // }
 
-    if (!rgb_matrix::ParseOptionsFromFlags(&argc, &argv, &matrix_options, &runtime_opt)) {
-        std::cout << "Invalid option" << std::endl;
-        exit(1);
-    }
+    // if (!rgb_matrix::ParseOptionsFromFlags(&argc, &argv, &matrixOptions, &runtimeOpt)) {
+    //     std::cout << "Invalid option" << std::endl;
+    //     exit(1);
+    // }
 
-    for (int i = 0; i < argc; ++i) {
-        delete[] argv[i];  // Free each individual char array
-    }
-    delete[] argv;  // Free the array of pointers
+    // for (int i = 0; i < argc; ++i) {
+    //     delete[] argv[i];  // Free each individual char array
+    // }
+    // delete[] argv;  // Free the array of pointers
 
-    matrix = RGBMatrix::CreateFromOptions(matrix_options, runtime_opt);
-    if (matrix == NULL){
-        std::cerr << "Unable to initialize matrix" << std::endl;
-        exit(1);
-    }
-
-    // fetch past charts
-    for (const auto& symbol : c.get_symbols()) {
-        fetch_past_chart(symbol, MATRIX_WIDTH);
-    }
+    // matrix = RGBMatrix::CreateFromOptions(matrixOptions, runtimeOpt);
+    // if (matrix == NULL){
+    //     std::cerr << "Unable to initialize matrix" << std::endl;
+    //     exit(1);
+    // }
 }
 
 Renderer::~Renderer() {
     std::cout << "Clearing matrix..." << std::endl;
-    matrix->Clear();
-    delete matrix;
-    matrix = NULL;
+    // matrix->Clear();
+    // delete matrix;
+    // matrix = NULL;
     std::cout << "Cleared matrix." << std::endl;
 }
 
-void Renderer::fetch_past_chart(std::string symbol, int chart_width) {
-    past_charts_[symbol] = d->get_price_history(symbol, chart_width);
-}
-
-void Renderer::update_chart(std::string symbol, double last_price, bool temporary_price, bool to_render) {
-    int offset_x = logo_rendered ? c.get_logo_size() + LOGO_CHART_GAP : 0;
-    int offset_y = MATRIX_WIDTH - c.get_chart_height();
+void Renderer::updateChart(std::string symbol, double lastPrice, bool temporaryPrice, bool toRender) {
+    if (pastCharts_[symbol].empty()) {
+        pastCharts_[symbol] = dataStorage_->getPriceHistory(symbol, MATRIX_WIDTH);
+    }
+    
+    int offsetX = logoRendered_ ? config_.getLogoSize() + LOGO_CHART_GAP : 0;
+    int offsetY = MATRIX_WIDTH - config_.getChartHeight();
 
     // print symbol
     std::cout << "symbol: " << symbol << std::endl;
 
     std::cout << "past chart: " << std::endl;
-    for (int i = offset_x; i < MATRIX_WIDTH; i += 1) {
-        std::cout << past_charts_[symbol][i] << " "; 
+    for (int i = offsetX; i < MATRIX_WIDTH; i += 1) {
+        std::cout << pastCharts_[symbol][i] << " "; 
     }
     std::cout << std::endl;
 
     // print last price
-    std::cout << "last price: " << last_price << std::endl; 
+    std::cout << "last price: " << lastPrice << std::endl; 
 
-    past_charts_[symbol].push_back(last_price);
+    pastCharts_[symbol].push_back(lastPrice);
 
     // make sure chart_ has <width> number of columns
-    if (past_charts_[symbol].size() > MATRIX_WIDTH) {
-        past_charts_[symbol].pop_front();
+    if (pastCharts_[symbol].size() > MATRIX_WIDTH) {
+        pastCharts_[symbol].pop_front();
     }
 
-    bool has_value = false;
-    for (int i = offset_x; i < MATRIX_WIDTH; i += 1) {
-        if (past_charts_[symbol][i] != MISSING_PRICE) {
-            has_value = true;
+    bool hasValue = false;
+    for (int i = offsetX; i < MATRIX_WIDTH; i += 1) {
+        if (pastCharts_[symbol][i] != MISSING_PRICE) {
+            hasValue = true;
             break;
         }
     }
 
-    if (!has_value) {
+    if (!hasValue) {
         return;
     }
 
-    if (to_render) {
-        std::vector<double> rendered_chart;
-        for (int i = offset_x; i < MATRIX_WIDTH; i += 1) {
-            rendered_chart.push_back(past_charts_[symbol][i]);
-        }
+    // if (toRender) {
+    //     std::vector<double> renderedChart;
+    //     for (int i = offsetX; i < MATRIX_WIDTH; i += 1) {
+    //         renderedChart.push_back(pastCharts_[symbol][i]);
+    //     }
 
-        // min value in the chart
-        double min_value = std::numeric_limits<double>::max(); // Initialize with a large value
-        for (double num : rendered_chart) if (num != MISSING_PRICE && num < min_value) min_value = num;
+    //     // min value in the chart
+    //     double minValue = std::numeric_limits<double>::max(); // Initialize with a large value
+    //     for (double num : renderedChart) if (num != MISSING_PRICE && num < minValue) minValue = num;
 
-        // max value in the chart
-        double max_value = *std::max_element(rendered_chart.begin(), rendered_chart.end());
+    //     // max value in the chart
+    //     double maxValue = *std::max_element(renderedChart.begin(), renderedChart.end());
 
-        // normalize the chart
-        for(int i = 0; i < rendered_chart.size(); i += 1){
-            if (rendered_chart[i] == MISSING_PRICE){
-                continue;
-            }
-            else if (min_value != max_value){
-                rendered_chart[i] = ((rendered_chart[i] - min_value) / (double)(max_value - min_value)) * c.get_chart_height();
-            }
-            else {
-                rendered_chart[i] = 0;
-            } 
-        }
+    //     // normalize the chart
+    //     for(int i = 0; i < renderedChart.size(); i += 1){
+    //         if (renderedChart[i] == MISSING_PRICE){
+    //             continue;
+    //         }
+    //         else if (minValue != maxValue){
+    //             renderedChart[i] = ((renderedChart[i] - minValue) / (double)(maxValue - minValue)) * config_.getChartHeight();
+    //         }
+    //         else {
+    //             renderedChart[i] = 0;
+    //         } 
+    //     }
 
-        // clear the gap between the chart and the logo
-        if (logo_rendered) {
-            for(int y = c.get_chart_height(); y >= 0; y -= 1){
-                matrix->SetPixel(offset_x-1, matrix->height() - y - 1, 0, 0, 0);
-            } 
-        }
+    //     // clear the gap between the chart and the logo
+    //     if (logoRendered_) {
+    //         for(int y = config_.getChartHeight(); y >= 0; y -= 1){
+    //             matrix->SetPixel(offsetX-1, matrix->height() - y - 1, 0, 0, 0);
+    //         } 
+    //     }
 
-        // run through rendered chart and remove everything before first non MISSING_PRICE value
-        while(rendered_chart[0] == MISSING_PRICE){
-            rendered_chart.erase(rendered_chart.begin());
-        }
+    //     // run through rendered chart and remove everything before first non MISSING_PRICE value
+    //     while(renderedChart[0] == MISSING_PRICE){
+    //         renderedChart.erase(renderedChart.begin());
+    //     }
         
-        int rendered_chart_width = rendered_chart.size();
-        for(int y = c.get_chart_height(); y >= 0; y -= 1){
-            for(int x = 0; x < rendered_chart_width; x += 1){
-                matrix->SetPixel(x + offset_x, matrix->height() - y - 1, 0, 0, 0);
-                // skip missing timepoints
-                if (rendered_chart[x] == MISSING_PRICE) continue;
+    //     int renderedChartWidth = renderedChart.size();
+    //     for(int y = config_.getChartHeight(); y >= 0; y -= 1){
+    //         for(int x = 0; x < renderedChartWidth; x += 1){
+    //             matrix->SetPixel(x + offsetX, matrix->height() - y - 1, 0, 0, 0);
+    //             // skip missing timepoints
+    //             if (renderedChart[x] == MISSING_PRICE) continue;
 
-                if (y == (int)rendered_chart[x]){
-                    matrix->SetPixel(x + offset_x, matrix->height() - y - 1, chart_top_RGB[0], chart_top_RGB[1], chart_top_RGB[2]);
-                }
-                else if (y == 0 || y < rendered_chart[x]){
-                    if ((x > 0 && y > rendered_chart[x - 1]) || 
-                        (x < rendered_chart_width-1 && y > rendered_chart[x + 1])){
-                        matrix->SetPixel(x + offset_x, matrix->height() - y - 1, chart_top_RGB[0], chart_top_RGB[1], chart_top_RGB[2]);
-                    }
-                    else {
-                        matrix->SetPixel(x + offset_x, matrix->height() - y - 1, chart_base_RGB[0], chart_base_RGB[1], chart_base_RGB[2]);
-                    }
-                }          
-            }
-        }
-    }
+    //             if (y == (int)renderedChart[x]){
+    //                 matrix->SetPixel(x + offsetX, matrix->height() - y - 1, chartTopRGB[0], chartTopRGB[1], chartTopRGB[2]);
+    //             }
+    //             else if (y == 0 || y < renderedChart[x]){
+    //                 if ((x > 0 && y > renderedChart[x - 1]) || 
+    //                     (x < renderedChartWidth-1 && y > renderedChart[x + 1])){
+    //                     matrix->SetPixel(x + offsetX, matrix->height() - y - 1, chartTopRGB[0], chartTopRGB[1], chartTopRGB[2]);
+    //                 }
+    //                 else {
+    //                     matrix->SetPixel(x + offsetX, matrix->height() - y - 1, chartBaseRGB[0], chartBaseRGB[1], chartBaseRGB[2]);
+    //                 }
+    //             }          
+    //         }
+    //     }
+    // }
 
-    if ( temporary_price ) {
-        past_charts_[symbol].pop_back();
+    if (temporaryPrice) {
+        pastCharts_[symbol].pop_back();
     }
 }
 
-void Renderer::render_logo(std::string logo, int size) {
-    if ( ! c.get_bool_render_logos() ){
-        logo_rendered = false; 
+void Renderer::renderLogo(std::string logo, int size) {
+    if (logo == ""){
+        logoRendered_ = false; 
         return;
     }
-    if ( ! fs::exists(fs::path{logo}) ){
-        logo_rendered = false; 
+    if (!fs::exists(fs::path{logo})){
+        logoRendered_ = false; 
         std::cout << "Logo not found: " << logo << std::endl;
         return;
     }
 
     Mat image = imread(logo, IMREAD_COLOR | IMREAD_IGNORE_ORIENTATION);
 
-    const int offset_x = 0, offset_y = matrix->height() - size;
-    // Copy all the pixels to the matrix.
-    for (size_t y = 0; y < image.rows; y++) {
-        for (size_t x = 0; x < image.cols; x++) {
-            int blue = image.at<Vec3b>(y, x)[0];
-            int green = image.at<Vec3b>(y, x)[1];
-            int red = image.at<Vec3b>(y, x)[2];
-            matrix->SetPixel(x + offset_x, y + offset_y,
-                            red,
-                            green,
-                            blue);
-        }
-    }
+    // const int offsetX = 0, offsetY = matrix->height() - size;
+    // // Copy all the pixels to the matrix.
+    // for (size_t y = 0; y < image.rows; y++) {
+    //     for (size_t x = 0; x < image.cols; x++) {
+    //         int blue = image.at<Vec3b>(y, x)[0];
+    //         int green = image.at<Vec3b>(y, x)[1];
+    //         int red = image.at<Vec3b>(y, x)[2];
+    //         matrix->SetPixel(x + offsetX, y + offsetY,
+    //                         red,
+    //                         green,
+    //                         blue);
+    //     }
+    // }
 
-    logo_rendered = true;
+    logoRendered_ = true;
 }
 
-void Renderer::render_symbol(std::string symbol) {
-    rgb_matrix::Color font_color(255, 255, 255);
+void Renderer::renderSymbol(std::string symbol) {
+    // rgb_matrix::Color fontColor(255, 255, 255);
 
-    std::string bdf_font_file = "fonts/"+ std::to_string(SYMBOL_FONT_WIDTH) + \
-                                "x"+std::to_string(SYMBOL_FONT_HEIGHT) +".bdf";
-    int x_orig = 2;
-    int y_orig = 1;
-    int letter_spacing = 0;
+    // std::string bdfFontFile = "fonts/"+ std::to_string(SYMBOL_FONT_WIDTH) + \
+    //                             "x"+std::to_string(SYMBOL_FONT_HEIGHT) +".bdf";
+    // int xOrig = 2;
+    // int yOrig = 1;
+    // int letterSpacing = 0;
     
-    //Load font. This needs to be a filename with a bdf bitmap font.
-    rgb_matrix::Font font;
-    if (!font.LoadFont(bdf_font_file.c_str())) {
-        fprintf(stderr, "Couldn't load font '%s'\n", bdf_font_file.c_str());
-        exit(1);
-    }
+    // //Load font. This needs to be a filename with a bdf bitmap font.
+    // rgb_matrix::Font font;
+    // if (!font.LoadFont(bdfFontFile.c_str())) {
+    //     fprintf(stderr, "Couldn't load font '%s'\n", bdfFontFile.c_str());
+    //     exit(1);
+    // }
 
-    rgb_matrix::DrawText(matrix, font, x_orig, y_orig + font.baseline(),
-                         font_color, NULL, symbol.c_str(),
-                         letter_spacing);
+    // rgb_matrix::DrawText(matrix, font, xOrig, yOrig + font.baseline(),
+    //                      fontColor, NULL, symbol.c_str(),
+    //                      letterSpacing);
 
-    // draw red vertial line on the left of symbol
-    for (int y = y_orig; y < y_orig + font.baseline(); y += 1) {
-        matrix->SetPixel(0, y, 255, 0, 0);
-    }
+    // // draw red vertial line on the left of symbol
+    // for (int y = yOrig; y < yOrig + font.baseline(); y += 1) {
+    //     matrix->SetPixel(0, y, 255, 0, 0);
+    // }
 }
 
-void Renderer::render_gain(std::string symbol, double last_price) {
-    if (closed_market_prices_[symbol] == ZERO_PRICE) {
-        closed_market_prices_[symbol] = d->closed_market_price(symbol);
+void Renderer::renderGain(std::string symbol, double lastPrice) {
+    if (closedMarketPrices_[symbol] == ZERO_PRICE) {
+        closedMarketPrices_[symbol] = dataStorage_->closedMarketPrice(symbol);
     }
 
-    if (last_price == MISSING_PRICE){
-        last_price = d->get_last_price(symbol);
+    if (lastPrice == MISSING_PRICE){
+        lastPrice = dataStorage_->getLastPrice(symbol);
     }
 
     double percentage = 0;
-    if (closed_market_prices_[symbol] != ZERO_PRICE && last_price != ZERO_PRICE) {
-        percentage = ((last_price - closed_market_prices_[symbol]) / closed_market_prices_[symbol]) * 100;
+    if (closedMarketPrices_[symbol] != ZERO_PRICE && lastPrice != ZERO_PRICE) {
+        percentage = ((lastPrice - closedMarketPrices_[symbol]) / closedMarketPrices_[symbol]) * 100;
     }
     std::ostringstream stream;
     stream << std::fixed << std::setprecision(PERCENTAGE_PRECISION) << percentage;
-    std::string todays_gain = stream.str() + "%";
+    std::string todaysGain = stream.str() + "%";
     if (percentage > 0) {
-        todays_gain = "+" + todays_gain;
+        todaysGain = "+" + todaysGain;
     }
 
-    rgb_matrix::Color font_color;    
-    if (percentage > 0.0){
-        font_color = rgb_matrix::Color(0, 255, 0);
-    } else if (percentage < 0.0){
-        font_color = rgb_matrix::Color(255, 0, 0);
-    } else {
-        font_color = rgb_matrix::Color(255, 255, 255);
-    }
+    // rgb_matrix::Color fontColor;    
+    // if (percentage > 0.0){
+    //     fontColor = rgb_matrix::Color(0, 255, 0);
+    // } else if (percentage < 0.0){
+    //     fontColor = rgb_matrix::Color(255, 0, 0);
+    // } else {
+    //     fontColor = rgb_matrix::Color(255, 255, 255);
+    // }
 
-    std::string bdf_font_file = "fonts/"+ std::to_string(PERCENTAGE_FONT_WIDTH) + \
-                                "x"+std::to_string(PERCENTAGE_FONT_HEIGHT) +".bdf";
-    int x_orig = MATRIX_WIDTH-todays_gain.length()*PERCENTAGE_FONT_WIDTH;
-    int y_orig = 1 + PERCENTAGE_FONT_HEIGHT + 1;
-    int letter_spacing = 0;
+    // std::string bdfFontFile = "fonts/"+ std::to_string(PERCENTAGE_FONT_WIDTH) + \
+    //                             "x"+std::to_string(PERCENTAGE_FONT_HEIGHT) +".bdf";
+    // int xOrig = MATRIX_WIDTH-todaysGain.length()*PERCENTAGE_FONT_WIDTH;
+    // int yOrig = 1 + PERCENTAGE_FONT_HEIGHT + 1;
+    // int letterSpacing = 0;
     
-    //Load font. This needs to be a filename with a bdf bitmap font.
-    rgb_matrix::Font font;
-    if (!font.LoadFont(bdf_font_file.c_str())) {
-        fprintf(stderr, "Couldn't load font '%s'\n", bdf_font_file.c_str());
-        exit(1);
-    }
+    // //Load font. This needs to be a filename with a bdf bitmap font.
+    // rgb_matrix::Font font;
+    // if (!font.LoadFont(bdfFontFile.c_str())) {
+    //     fprintf(stderr, "Couldn't load font '%s'\n", bdfFontFile.c_str());
+    //     exit(1);
+    // }
 
-    // clear previous text
-    for (int y = y_orig; y < y_orig + font.baseline(); y += 1) {
-        for (int x = x_orig-PERCENTAGE_FONT_WIDTH*2; \
-            x < std::min(static_cast<int>(x_orig + (todays_gain.length()+1)*PERCENTAGE_FONT_WIDTH), MATRIX_WIDTH); \
-            x += 1) {
-            matrix->SetPixel(x, y, 0, 0, 0);
-        }
-    }
+    // // clear previous text
+    // for (int y = yOrig; y < yOrig + font.baseline(); y += 1) {
+    //     for (int x = xOrig-PERCENTAGE_FONT_WIDTH*2; \
+    //         x < std::min(static_cast<int>(xOrig + (todaysGain.length()+1)*PERCENTAGE_FONT_WIDTH), MATRIX_WIDTH); \
+    //         x += 1) {
+    //         matrix->SetPixel(x, y, 0, 0, 0);
+    //     }
+    // }
 
-    rgb_matrix::DrawText(matrix, font, x_orig, y_orig + font.baseline(),
-                         font_color, NULL, todays_gain.c_str(),
-                         letter_spacing);
+    // rgb_matrix::DrawText(matrix, font, xOrig, yOrig + font.baseline(),
+    //                      fontColor, NULL, todaysGain.c_str(),
+    //                      letterSpacing);
 }
 
-void Renderer::render_price(std::string symbol, double last_price) {
-    if (last_price == MISSING_PRICE){
-        last_price = d->get_last_price(symbol);
+void Renderer::renderPrice(std::string symbol, double lastPrice) {
+    if (lastPrice == MISSING_PRICE){
+        lastPrice = dataStorage_->getLastPrice(symbol);
     }
 
     std::ostringstream stream;
-    stream << std::fixed << std::setprecision(5) << last_price;
+    stream << std::fixed << std::setprecision(5) << lastPrice;
     std::string price = stream.str();
     while (price.length() > 6) {
         price = price.substr(0, price.length()-1);
@@ -297,44 +292,53 @@ void Renderer::render_price(std::string symbol, double last_price) {
 
     price = "$" + price;
 
-    rgb_matrix::Color font_color(255, 255, 255);
+    // rgb_matrix::Color fontColor(255, 255, 255);
     
-    std::string bdf_font_file = "fonts/"+ std::to_string(PRICE_FONT_WIDTH) + \
-                                "x"+std::to_string(PRICE_FONT_HEIGHT) +".bdf";
-    int x_orig = logo_rendered ? MATRIX_WIDTH-price.length()*PRICE_FONT_WIDTH : 2;
-    int y_orig = logo_rendered ? 1 : 1 + PRICE_FONT_HEIGHT + 1;
-    int letter_spacing = 0;
+    // std::string bdfFontFile = "fonts/"+ std::to_string(PRICE_FONT_WIDTH) + \
+    //                             "x"+std::to_string(PRICE_FONT_HEIGHT) +".bdf";
+    // int xOrig = logoRendered_ ? MATRIX_WIDTH-price.length()*PRICE_FONT_WIDTH : 2;
+    // int yOrig = logoRendered_ ? 1 : 1 + PRICE_FONT_HEIGHT + 1;
+    // int letterSpacing = 0;
 
-    //Load font. This needs to be a filename with a bdf bitmap font.
-    rgb_matrix::Font font;
-    if (!font.LoadFont(bdf_font_file.c_str())) {
-        fprintf(stderr, "Couldn't load font '%s'\n", bdf_font_file.c_str());
-        exit(1);
-    }
+    // //Load font. This needs to be a filename with a bdf bitmap font.
+    // rgb_matrix::Font font;
+    // if (!font.LoadFont(bdfFontFile.c_str())) {
+    //     fprintf(stderr, "Couldn't load font '%s'\n", bdfFontFile.c_str());
+    //     exit(1);
+    // }
 
-    // clear previous text
-    for (int y = y_orig; y < y_orig + font.baseline()+1; y += 1) {
-        for (int x = x_orig-PRICE_FONT_WIDTH; \
-            x < std::min(static_cast<int>(x_orig + (price.length() + 1) * PRICE_FONT_WIDTH), MATRIX_WIDTH); \
-            x += 1){
-            matrix->SetPixel(x, y, 0, 0, 0);
-        }
-    }
+    // // clear previous text
+    // for (int y = yOrig; y < yOrig + font.baseline()+1; y += 1) {
+    //     for (int x = xOrig-PRICE_FONT_WIDTH; \
+    //         x < std::min(static_cast<int>(xOrig + (price.length() + 1) * PRICE_FONT_WIDTH), MATRIX_WIDTH); \
+    //         x += 1){
+    //         matrix->SetPixel(x, y, 0, 0, 0);
+    //     }
+    // }
 
-    rgb_matrix::DrawText(matrix, font, x_orig, y_orig + font.baseline(),
-                         font_color, NULL, price.c_str(),
-                         letter_spacing);
+    // rgb_matrix::DrawText(matrix, font, xOrig, yOrig + font.baseline(),
+    //                      fontColor, NULL, price.c_str(),
+    //                      letterSpacing);
 }
 
-void Renderer::render_entire_symbol(std::string symbol, double price) {
-    matrix->Fill(0, 0, 0);
-    render_logo(LOGO_DIR+"/"+c.symbol_to_logo(symbol)+LOGO_EXT, c.get_logo_size());
-    render_symbol(c.symbol_to_logo(symbol));
-    render_price(symbol, price);
-    render_gain(symbol, price);
-    update_chart(symbol, price, true, true);
+void Renderer::renderEntireSymbol(int currentSymbolIndex, double price) {
+    std::string symbolName = config_.getSubsList()[currentSymbolIndex];
+    std::string apiSymbolName = config_.getApiSubsList()[currentSymbolIndex];
+    std::string logoSymbolName = config_.getLogoSubsList()[currentSymbolIndex];
+
+    // matrix->Fill(0, 0, 0);
+    // renderLogo(LOGO_DIR+"/"+logoSymbolName+LOGO_EXT, config_.getLogoSize());
+    // renderSymbol(symbolName);
+    // renderPrice(apiSymbolName, price);
+    // renderGain(apiSymbolName, price);
+    // updateChart(apiSymbolName, price, true, true);
 }
 
-rgb_matrix::RGBMatrix* Renderer::get_matrix() {
-    return matrix;
+void Renderer::clearPastCharts(){
+    // clear past chart map for the symbol
+    pastCharts_ = std::unordered_map<std::string, std::deque<double>>();
 }
+
+// rgb_matrix::RGBMatrix* Renderer::getMatrix() {
+//     return matrix;
+// }
