@@ -19,13 +19,15 @@ namespace {
     // Constants
     const std::string FINNHUB_URL = "wss://ws.finnhub.io/?token=";
     const std::string LOGO_URL = "https://financialmodelingprep.com/image-stock/";
-    const std::string CONTROL_URL = "wss://ec2-13-60-91-255.eu-north-1.compute.amazonaws.com:8080/ws?token="; 
+    const std::string CONTROL_URL = "wss://backend.stock-ticker-remote.link/ws?token="; 
 
     // Global variables
     volatile long long lastUpdateTime = time(nullptr);
     volatile bool interruptReceived = false;
     volatile bool reconnecting = false;
     long long nextUpdateTime;
+
+    bool receivedFirstUpdate;
 }
 
 static void interruptHandler(int signo) {
@@ -44,6 +46,8 @@ Session::Session() {
     }
 
     nextUpdateTime = time(nullptr) + config_->getSwitchTime();
+
+    receivedFirstUpdate = false;
 }
 
 void Session::chooseConfigAndSubscribe() {
@@ -100,7 +104,7 @@ void Session::reconnect() {
     client_->close().get();
     client_.reset();
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(3));
 
     subscribe();
 }
@@ -181,9 +185,9 @@ void Session::configUpdate(const std::string& config) {
 void Session::controllerSubscribe() {
     std::cout << "Subscribing controller app..." << std::endl;
     try {
-        websocket_client_config config;
-        config.set_validate_certificates(false); // Disable certificate validation
-        controllerClient_ = std::make_unique<websocket_callback_client>(config);
+        // websocket_client_config config;
+        // config.set_validate_certificates(false); // Disable certificate validation
+        controllerClient_ = std::make_unique<websocket_callback_client>();
 
         controllerClient_->set_message_handler([this](websocket_incoming_message msg) {
             if (!interruptReceived) {
@@ -207,6 +211,36 @@ void Session::controllerSubscribe() {
     }
 }
 
+void Session::priceUpdateCheck() {
+    if (!receivedFirstUpdate) return;
+
+    int secondsSinceLastUpdate = dataStorage_->secondsSinceLastUpdate();
+    if (secondsSinceLastUpdate == std::numeric_limits<int>::max()) {
+        secondsSinceLastUpdate = PRICE_TIME_INTERVAL;
+    }
+    bool temporaryPrice = !(secondsSinceLastUpdate >= PRICE_TIME_INTERVAL &&
+                           (secondsSinceLastUpdate % PRICE_TIME_INTERVAL) < ALLOWABLE_DISSYNCHRONIZATION_TIME);
+
+    std::cout << "Seconds since last update: " << secondsSinceLastUpdate << std::endl;
+    for (const auto& symbol : config_->getApiSubsList()) {
+        double price = latestPrices_[symbol];
+        if (!temporaryPrice) {
+            if (price != MISSING_PRICE) {
+                dataStorage_->savePrice(symbol, price);
+                std::cout << "Saved price: " << symbol << " " << price << std::endl;
+            }
+            latestPrices_[symbol] = MISSING_PRICE;
+        }
+
+        bool isPrimarySymbol = config_->getApiSubsList()[currentSymbolIndex_] == symbol;
+        if (isPrimarySymbol) {
+            renderer_.renderPrice(symbol, price);
+            renderer_.renderGain(symbol, price);
+        }
+        renderer_.updateChart(symbol, price, temporaryPrice, isPrimarySymbol);
+    }
+}
+
 void Session::runForever() {
     // If using controller api, spin and wait for config update:
     while(config_->getApiSubsList().size() == 0 || config_->getLogoSubsList().size() == 0) {
@@ -224,7 +258,9 @@ void Session::runForever() {
             reconnecting = false;
         }
 
-        if (time(nullptr) > nextUpdateTime) {
+        priceUpdateCheck();
+
+        if (time(nullptr) > nextUpdateTime && config_->getApiSubsList().size() > 1) {
             currentSymbolIndex_ = (currentSymbolIndex_ + 1) % config_->getApiSubsList().size();
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             renderer_.renderEntireSymbol(currentSymbolIndex_, latestPrices_[config_->getApiSubsList()[currentSymbolIndex_]]);
@@ -274,43 +310,8 @@ void Session::processMessage(const std::string& update) {
             }
         }
         parsedSymbols.clear();
-    }
 
-    static bool firstSave = true;
-    int secondsSinceLastUpdate = dataStorage_->secondsSinceLastUpdate();
-    if (secondsSinceLastUpdate == std::numeric_limits<int>::max()) {
-        secondsSinceLastUpdate = PRICE_TIME_INTERVAL;
-    }
-    bool temporaryPrice = !(secondsSinceLastUpdate >= PRICE_TIME_INTERVAL &&
-                           (secondsSinceLastUpdate % PRICE_TIME_INTERVAL) < ALLOWABLE_DISSYNCHRONIZATION_TIME);
-
-    std::cout << "Seconds since last update: " << secondsSinceLastUpdate << std::endl;
-    for (const auto& symbol : config_->getApiSubsList()) {
-        double price = latestPrices_[symbol];
-        if (!temporaryPrice) {
-            if (price != MISSING_PRICE) {
-                dataStorage_->savePrice(symbol, price);
-                std::cout << "Saved price: " << symbol << " " << price << std::endl;
-            }
-            latestPrices_[symbol] = MISSING_PRICE;
-        }
-
-        if (!temporaryPrice && !firstSave) {
-            for (int i = 0; i < static_cast<int>(secondsSinceLastUpdate / PRICE_TIME_INTERVAL) - 1; ++i) {
-                renderer_.updateChart(symbol, MISSING_PRICE, false, false);
-            }
-        }
-
-        bool isPrimarySymbol = config_->getApiSubsList()[currentSymbolIndex_] == symbol;
-        if (isPrimarySymbol) {
-            renderer_.renderPrice(symbol, price);
-            renderer_.renderGain(symbol, price);
-        }
-        renderer_.updateChart(symbol, price, temporaryPrice, isPrimarySymbol);
-    }
-
-    if (!temporaryPrice) {
-        firstSave = false;
+        if (!receivedFirstUpdate) receivedFirstUpdate = true;
     }
 }
 

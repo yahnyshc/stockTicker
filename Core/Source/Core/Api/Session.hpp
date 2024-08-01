@@ -24,6 +24,7 @@ private:
     pplx::task<void> fetchLogo(const std::string& logo);
     void subscribeToSymbol(const std::string& symbol);
     void processMessage(const std::string& update);
+    void priceUpdateCheck();
     void configUpdate(const std::string& config);
     void controllerSubscribe();
     void subscribe();
