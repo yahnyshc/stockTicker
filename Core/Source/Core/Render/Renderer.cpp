@@ -327,6 +327,7 @@ void Renderer::renderEntireSymbol(int currentSymbolIndex, double price) {
     std::string logoSymbolName = config_->getLogoSubsList()[currentSymbolIndex];
 
     matrix_->Fill(0, 0, 0);
+    matrix_->Clear();
     renderLogo(LOGO_DIR+"/"+logoSymbolName+LOGO_EXT, config_->getLogoSize());
     renderSymbol(symbolName);
     renderPrice(apiSymbolName, price);

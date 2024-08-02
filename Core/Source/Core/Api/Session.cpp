@@ -9,6 +9,7 @@
 #include <chrono>
 #include <algorithm>
 #include <csignal>
+#include <mutex>
 #include "Session.hpp"
 
 using namespace web::websockets::client;
@@ -24,10 +25,14 @@ namespace {
     // Global variables
     volatile long long lastUpdateTime = time(nullptr);
     volatile bool interruptReceived = false;
-    volatile bool reconnecting = false;
-    long long nextUpdateTime;
+    long long nextSwitchTime = 0;
 
-    bool receivedFirstUpdate;
+    bool receivedFirstUpdate = false;
+
+    bool connected = false;
+    bool updatingConfig = false;
+
+    std::mutex priceConfigMutex;  // Mutex for price and config updates
 }
 
 static void interruptHandler(int signo) {
@@ -44,10 +49,6 @@ Session::Session() {
     for (const auto& symbol : config_->getApiSubsList()) {
         latestPrices_[symbol] = MISSING_PRICE;
     }
-
-    nextUpdateTime = time(nullptr) + config_->getSwitchTime();
-
-    receivedFirstUpdate = false;
 }
 
 void Session::chooseConfigAndSubscribe() {
@@ -65,6 +66,7 @@ void Session::subscribe() {
         client_ = std::make_unique<websocket_callback_client>();
     
         client_->connect(U(FINNHUB_URL + config_->getToken())).wait();
+        connected = true;
 
         client_->set_message_handler([this](websocket_incoming_message msg) {
             if (!interruptReceived) {
@@ -81,9 +83,7 @@ void Session::subscribe() {
             } else {
                 std::cout << "WebSocket Closed with no reason provided." << std::endl;
             }
-            if (!reconnecting && !interruptReceived) {
-                reconnecting = true;
-            }
+            connected = false;
         });
 
         std::cout << "Subscribing to symbols..." << std::endl;
@@ -93,20 +93,20 @@ void Session::subscribe() {
     } catch (const std::exception& e) {
         std::cerr << "Exception occurred: " << e.what() << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(3));
-        reconnecting = true;
     }
 }
 
-void Session::reconnect() {
-    std::cout << "Reconnecting..." << std::endl;
+void Session::disconnect() {
+    std::cout << "Disconnecting..." << std::endl;
     std::cout << "Closing the old client connection..." << std::endl;
 
-    client_->close().get();
-    client_.reset();
+    if (client_) {
+        client_->close().wait(); // Use wait to ensure close operation completes
+        client_.reset();
+        std::cout << "Closed the old client connection..." << std::endl;
+    }
 
-    std::this_thread::sleep_for(std::chrono::seconds(3));
-
-    subscribe();
+    connected = false;
 }
 
 std::vector<std::string> jsonArrayToVector(const Json::Value& jsonArray) {
@@ -120,6 +120,8 @@ std::vector<std::string> jsonArrayToVector(const Json::Value& jsonArray) {
 }
 
 void Session::configUpdate(const std::string& config) {
+    std::lock_guard<std::mutex> lock(priceConfigMutex); 
+
     Json::Value root;
     Json::Reader reader;
     if (!reader.parse(config, root) || root["type"].asString() != "config") {
@@ -138,27 +140,25 @@ void Session::configUpdate(const std::string& config) {
     }
 
     static bool firstRun = true;
+    static int configId;
 
     bool updateSubs = firstRun || 
         config_->getSubsList() != subsList ||
         config_->getApiSubsList() != apiSubsList;
 
     if ( updateSubs ) {
+        disconnect();
         renderer_.clearPastCharts();
+        if (configId != root["id"].asInt()) {
+            currentSymbolIndex_ = -1;
+            nextSwitchTime = 0;
+            configId = root["id"].asInt();
+        }
         config_->setSubsList(subsList);
         config_->setApiSubsList(apiSubsList);
         
         for (const auto& symbol : config_->getApiSubsList()) {
             latestPrices_[symbol] = MISSING_PRICE;
-        }
-
-        currentSymbolIndex_ = 0;
-        
-        if (firstRun) {
-            subscribe();
-        }
-        else{
-            reconnecting = true;
         }
     }
     
@@ -172,9 +172,9 @@ void Session::configUpdate(const std::string& config) {
         saveLogos();
     }
 
-    if (updateSubs || updateLogos){
-        renderer_.renderEntireSymbol(currentSymbolIndex_, latestPrices_[config_->getApiSubsList()[currentSymbolIndex_]]);
-        nextUpdateTime = time(nullptr) + config_->getSwitchTime();
+    if (updateSubs) {
+        subscribe();
+        updatingConfig = false;
     }
 
     if (firstRun) {
@@ -219,7 +219,7 @@ void Session::priceUpdateCheck() {
         secondsSinceLastUpdate = PRICE_TIME_INTERVAL;
     }
     bool temporaryPrice = !(secondsSinceLastUpdate >= PRICE_TIME_INTERVAL &&
-                           (secondsSinceLastUpdate % PRICE_TIME_INTERVAL) < ALLOWABLE_DISSYNCHRONIZATION_TIME);
+                        (secondsSinceLastUpdate % PRICE_TIME_INTERVAL) < ALLOWABLE_DISSYNCHRONIZATION_TIME);
 
     std::cout << "Seconds since last update: " << secondsSinceLastUpdate << std::endl;
     for (const auto& symbol : config_->getApiSubsList()) {
@@ -231,13 +231,7 @@ void Session::priceUpdateCheck() {
             }
             latestPrices_[symbol] = MISSING_PRICE;
         }
-
-        bool isPrimarySymbol = config_->getApiSubsList()[currentSymbolIndex_] == symbol;
-        if (isPrimarySymbol) {
-            renderer_.renderPrice(symbol, price);
-            renderer_.renderGain(symbol, price);
-        }
-        renderer_.updateChart(symbol, price, temporaryPrice, isPrimarySymbol);
+        render(symbol, price, temporaryPrice, false);
     }
 }
 
@@ -247,29 +241,49 @@ void Session::runForever() {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    std::cout << "Debug: Redering symbol\n";
-    renderer_.renderEntireSymbol(currentSymbolIndex_, latestPrices_[config_->getApiSubsList()[currentSymbolIndex_]]);
-    std::cout << "Debug: Redered symbol\n";
-
-    std::cout << "Debug: starting while loop.\n";
     while (!interruptReceived) {
-        if (reconnecting) {
-            reconnect();
-            reconnecting = false;
-        }
+        if (priceConfigMutex.try_lock()) {
+            if (!connected) {
+                std::cout << "Client unexpectedly disconnected. Reconnecting..." << std::endl;
+                disconnect();
+                subscribe();
+            }
 
-        priceUpdateCheck();
+            priceUpdateCheck();
+            
+            primarySymbolSwitchCheck();
 
-        if (time(nullptr) > nextUpdateTime && config_->getApiSubsList().size() > 1) {
-            currentSymbolIndex_ = (currentSymbolIndex_ + 1) % config_->getApiSubsList().size();
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            renderer_.renderEntireSymbol(currentSymbolIndex_, latestPrices_[config_->getApiSubsList()[currentSymbolIndex_]]);
-            nextUpdateTime = time(nullptr) + config_->getSwitchTime();
-        }
+            priceConfigMutex.unlock();
+        } 
     }
 
-    client_->close().get();
+    if (client_) {
+        client_->close().wait(); // Ensure the client closes gracefully
+    }
     std::cout << "Session stopped" << std::endl;
+}
+
+void Session::primarySymbolSwitchCheck() {
+    if (time(nullptr) > nextSwitchTime) {
+        currentSymbolIndex_ = (currentSymbolIndex_ + 1) % config_->getApiSubsList().size();
+        std::string symbol = config_->getApiSubsList()[currentSymbolIndex_];
+        double price = latestPrices_[config_->getApiSubsList()[currentSymbolIndex_]];
+        render(symbol, price, true, true);
+        nextSwitchTime = time(nullptr) + config_->getSwitchTime();
+    }
+}
+
+void Session::render(std::string symbol, double price, bool temporaryPrice, bool fully){
+    if (fully) {
+        renderer_.renderEntireSymbol(currentSymbolIndex_, latestPrices_[config_->getApiSubsList()[currentSymbolIndex_]]);
+    } else {
+        bool isPrimarySymbol = config_->getApiSubsList()[currentSymbolIndex_] == symbol;
+        if (isPrimarySymbol) {
+            renderer_.renderPrice(symbol, price);
+            renderer_.renderGain(symbol, price);
+        }
+        renderer_.updateChart(symbol, price, temporaryPrice, isPrimarySymbol);
+    }
 }
 
 void Session::subscribeToSymbol(const std::string& symbol) {
