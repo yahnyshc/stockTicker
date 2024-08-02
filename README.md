@@ -5,7 +5,6 @@ This project replicates the functionality of real-time LED Stock Ticker displays
 ![nvda](https://github.com/user-attachments/assets/5607ae33-e602-418f-be7a-fbd2ed3eac9c)
 ![btc](https://github.com/user-attachments/assets/e4434b13-45bf-4955-840d-41fdbb119f1a)
 
-
 ## Features
 
 - Developed a real-time LED stock ticker using C++, PostgreSQL, and Raspberry Pi.
@@ -15,12 +14,19 @@ This project replicates the functionality of real-time LED Stock Ticker displays
 - Designed a multithreading system for efficient data processing and smooth display updates.
 - Created visualization price charts with 1-minute intervals and past data stored in a PostgreSQL database.
 - Implemented rendering of logos, symbol names, and daily percentage gain/loss on a 64x32 RGB LED display.
+
 ## Hardware Requirements
 
 - Raspberry Pi 4B
 - Adafruit 64x32 RGB Matrix
 - Adafruit Bonnet
 - Power Supply
+
+## Configure using website
+
+To control the configuration, obtain the API key and set up subscriptions, logos, and API names using [stock-ticker-remote](https://stock-ticker-remote.link)
+
+[Stock Ticker Remote Github](https://github.com/yahnyshc/stockTickerRemote)
 
 ## Getting Started
 
@@ -57,7 +63,7 @@ Don't forget to install the necessary [Adafruit-Hat drivers](https://learn.adafr
     ...
     # See Config.cpp to find out about more config options
 
-6. Build and Run:
+6. **Build and Run**:
 
    The project follows Core - App architecture.
 
