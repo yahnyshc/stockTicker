@@ -8,13 +8,13 @@ This project replicates the functionality of real-time LED Stock Ticker displays
 
 ## Features
 
-- **Real-time Market Prices**: Fetches real-time prices for stocks, ETFs, and cryptocurrencies using websocket connection with [FinnHub API](https://finnhub.io).
-- **1-Minute Candlestick Charts**: Displays chart(up to 64 columns) using the last received price and past data stored in a PostgreSQL database.
-- **Daily Gains/Losses**: Shows today's gain or loss in percentage.
-- **Logos Display**: Displays logos for the subscribed items.
-- **Multiple subscriptions** When multiple subscriptions are specified in the config file, the ticker switches between them every 5 seconds.
-- **Visualization**: Visualization of the above features on the bright RGB LED display using GPIO pins interaction.
-
+- Developed a real-time LED stock ticker using C++, PostgreSQL, and Raspberry Pi.
+- Utilized WebSockets to interact with financial data APIs for real-time price updates.
+- Applied observer design pattern to control the ticker with WebSocket connection to Spring Boot back-end.
+- Supports stocks, ETFs, crypto, forex, indices, and commodities subscriptions.
+- Designed a multithreading system for efficient data processing and smooth display updates.
+- Created visualization price charts with 1-minute intervals and past data stored in a PostgreSQL database.
+- Implemented rendering of logos, symbol names, and daily percentage gain/loss on a 64x32 RGB LED display.
 ## Hardware Requirements
 
 - Raspberry Pi 4B
@@ -40,27 +40,19 @@ Don't forget to install the necessary [Adafruit-Hat drivers](https://learn.adafr
 
 5. **Configuration**:
 
-- Create a config file named ws.cfg in the root directory with the following contents:
+- Create a config file named config.cfg in the root directory with the following contents:
     ```bash
     API_Token=<FinnHub API Key>
+    Control_API_Token=<API Key obtained from stock-ticker-remote.link> (optional)
 
-    # The values will be accumulated so all of the symbols will be subscribed for
-    Symbol_List=GOOGL
-    Symbol_List=NVDA
-    Symbol_List=BINANCE:BTCUSDT
-    Symbol_List=SPY
-    Symbol_List=IC MARKETS:1
-    Symbol_List=IC MARKETS:2
-
-    # Mapping from the symbol name to the logo name on https://financialmodelingprep.com/image-stock/<logo>.png
-    # If no mapping is specified, then the logo will not be rendered and the extended price chart will cover the logo screen section.
-    Icon_Mapping=IC MARKETS:1 -> EURUSD
-    Icon_Mapping=IC MARKETS:2 -> GBPUSD
-    Icon_Mapping=BINANCE:BTCUSDT -> BTCUSD
+    # This doesn't have to be configured if Control_API_Token is specified.
+    Subs_list= BTC NVDA 
+    Api_Subs_list = COINBASE:BTC-USD NVDA
+    Logo_Subs_list = BTCUSD NVDA
 
     Logo_Size=23
 
-    # Determines whether to display logos or instead display full 64 column price chart.
+    # Determines whether to display logos or instead display a full 64-column price chart.
     Render_Logos=true
     ...
     # See Config.cpp to find out about more config options
