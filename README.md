@@ -77,11 +77,6 @@ Don't forget to install the necessary [Adafruit-Hat drivers](https://learn.adafr
     make
     ./Binaries/<OS>/Debug/App/App
 
-## Video
-
-https://github.com/user-attachments/assets/3c610362-67a1-4644-8a2b-8b2a6e6fb934
-
-
 ## Prototype
 
 ![Prototype](https://github.com/user-attachments/assets/45b43189-f218-42c4-bcec-dc8e10bd6f71)
