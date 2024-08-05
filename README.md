@@ -2,10 +2,10 @@
 
 This project replicates the functionality of real-time LED Stock Ticker displays commonly found in marketplaces like [Etsy Led Stock Ticker](https://www.etsy.com/uk/market/led_stock_ticker).
 
-![eth](https://github.com/user-attachments/assets/dab7fc68-cff8-487c-9a4b-1fda2f5fd5c2)
+![btc](https://github.com/user-attachments/assets/db0b8be3-398d-4cb7-8aee-a99973983060)
 ![nvda](https://github.com/user-attachments/assets/755b3c21-53be-4728-9978-78e33f46a1fe)
 ![gbpusd](https://github.com/user-attachments/assets/39e344bb-c2a8-45b6-95f7-0652697ac3d7)
-![nsdq](https://github.com/user-attachments/assets/99f17c0a-e6e9-4f6e-8a70-19c291e1624f)
+![nsdq](https://github.com/user-attachments/assets/e9db7ec4-9b80-41c9-bf21-d238a9c810f4)
 
 ## Video
 
