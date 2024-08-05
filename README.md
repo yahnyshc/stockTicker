@@ -2,15 +2,17 @@
 
 This project replicates the functionality of real-time LED Stock Ticker displays commonly found in marketplaces like [Etsy Led Stock Ticker](https://www.etsy.com/uk/market/led_stock_ticker).
 
-![nvda](https://github.com/user-attachments/assets/5607ae33-e602-418f-be7a-fbd2ed3eac9c)
-![btc](https://github.com/user-attachments/assets/e4434b13-45bf-4955-840d-41fdbb119f1a)
+![eth](https://github.com/user-attachments/assets/dab7fc68-cff8-487c-9a4b-1fda2f5fd5c2)
+![nvda](https://github.com/user-attachments/assets/755b3c21-53be-4728-9978-78e33f46a1fe)
+![gbpusd](https://github.com/user-attachments/assets/39e344bb-c2a8-45b6-95f7-0652697ac3d7)
+![nsdq](https://github.com/user-attachments/assets/99f17c0a-e6e9-4f6e-8a70-19c291e1624f)
 
 ## Features
 
 - Developed a real-time LED stock ticker using C++, PostgreSQL, and Raspberry Pi.
 - Utilized WebSockets to interact with financial data APIs for real-time price updates.
 - Applied observer design pattern to control the ticker with WebSocket connection to Spring Boot back-end.
-- Supports stocks, ETFs, crypto, forex, indices, and commodities subscriptions.
+- Enabled support for stocks, ETFs, crypto, forex, indices, and commodities subscriptions.
 - Designed a multithreading system for efficient data processing and smooth display updates.
 - Created visualization price charts with 1-minute intervals and past data stored in a PostgreSQL database.
 - Implemented rendering of logos, symbol names, and daily percentage gain/loss on a 64x32 RGB LED display.
