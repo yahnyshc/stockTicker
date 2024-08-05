@@ -7,6 +7,10 @@ This project replicates the functionality of real-time LED Stock Ticker displays
 ![gbpusd](https://github.com/user-attachments/assets/39e344bb-c2a8-45b6-95f7-0652697ac3d7)
 ![nsdq](https://github.com/user-attachments/assets/99f17c0a-e6e9-4f6e-8a70-19c291e1624f)
 
+## Video
+
+https://github.com/user-attachments/assets/af0f0682-fe0a-4485-b2ba-68c3ebee7705
+
 ## Features
 
 - Developed a real-time LED stock ticker using C++, PostgreSQL, and Raspberry Pi.
