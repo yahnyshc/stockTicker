@@ -56,9 +56,13 @@ Renderer::~Renderer() {
     std::cout << "Cleared matrix." << std::endl;
 }
 
-void Renderer::updateChart(std::string symbol, double lastPrice, bool temporaryPrice, bool toRender) {
+void Renderer::updateChart(std::string symbol, double lastPrice, bool savePrice, bool toRender) {
     if (pastCharts_[symbol].empty()) {
         pastCharts_[symbol] = dataStorage_->getPriceHistory(symbol, MATRIX_WIDTH);
+        // if we refetch past chart, do not save the last price, because it will be in past chart
+        if (lastPrice != MISSING_PRICE) {
+            savePrice = false;
+        } 
     }
     
     int offsetX = logoRendered_ ? config_->getLogoSize() + LOGO_CHART_GAP : 0;
@@ -156,7 +160,7 @@ void Renderer::updateChart(std::string symbol, double lastPrice, bool temporaryP
         }
     }
 
-    if (temporaryPrice) {
+    if (!savePrice) {
         pastCharts_[symbol].pop_back();
     }
 }
@@ -332,12 +336,13 @@ void Renderer::renderEntireSymbol(int currentSymbolIndex, double price) {
     renderSymbol(symbolName);
     renderPrice(apiSymbolName, price);
     renderGain(apiSymbolName, price);
-    updateChart(apiSymbolName, price, true, true);
+    updateChart(apiSymbolName, price, false, true);
 }
 
 void Renderer::clearPastCharts(){
     // clear past chart map for the symbol
     pastCharts_ = std::unordered_map<std::string, std::deque<double>>();
+    closedMarketPrices_ = std::unordered_map<std::string, double>();
 }
 
 rgb_matrix::RGBMatrix* Renderer::getMatrix() {

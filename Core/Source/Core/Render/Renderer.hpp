@@ -43,7 +43,7 @@ public:
     Renderer();
     ~Renderer();
 
-    void updateChart(std::string symbol, double lastPrice, bool temporaryPrice, bool toRender);
+    void updateChart(std::string symbol, double lastPrice, bool savePrice, bool toRender);
     void renderGain(std::string symbol, double lastPrice);
     void renderLogo(std::string logo, int size);
     void renderSymbol(std::string symbol);

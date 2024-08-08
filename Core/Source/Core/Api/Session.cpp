@@ -22,17 +22,16 @@ namespace {
     const std::string LOGO_URL = "https://financialmodelingprep.com/image-stock/";
     const std::string CONTROL_URL = "wss://backend.stock-ticker-remote.link/ws?token="; 
 
-    // Global variables
+    int currentSymbolIndex_ = -1;
     volatile long long lastUpdateTime = time(nullptr);
     volatile bool interruptReceived = false;
     long long nextSwitchTime = 0;
 
     bool receivedFirstUpdate = false;
 
-    bool connected = false;
-    bool updatingConfig = false;
-
-    std::mutex priceConfigMutex;  // Mutex for price and config updates
+    bool connectedToApi = false;
+    bool connectedToController = false;
+    bool updatingConfig = false;    
 }
 
 static void interruptHandler(int signo) {
@@ -66,7 +65,7 @@ void Session::subscribe() {
         client_ = std::make_unique<websocket_callback_client>();
     
         client_->connect(U(FINNHUB_URL + config_->getToken())).wait();
-        connected = true;
+        connectedToApi = true;
 
         client_->set_message_handler([this](websocket_incoming_message msg) {
             if (!interruptReceived) {
@@ -83,7 +82,7 @@ void Session::subscribe() {
             } else {
                 std::cout << "WebSocket Closed with no reason provided." << std::endl;
             }
-            connected = false;
+            connectedToApi = false;
         });
 
         std::cout << "Subscribing to symbols..." << std::endl;
@@ -106,7 +105,20 @@ void Session::disconnect() {
         std::cout << "Closed the old client connection..." << std::endl;
     }
 
-    connected = false;
+    connectedToApi = false;
+}
+
+void Session::disconnectController() {
+    std::cout << "Disconnecting from remote controller..." << std::endl;
+    std::cout << "Closing the old remote client connection..." << std::endl;
+
+    if (client_) {
+        controllerClient_->close().wait(); // Use wait to ensure close operation completes
+        controllerClient_.reset();
+        std::cout << "Closed the old remote client connection..." << std::endl;
+    }
+
+    connectedToController = false;
 }
 
 std::vector<std::string> jsonArrayToVector(const Json::Value& jsonArray) {
@@ -148,7 +160,8 @@ void Session::configUpdate(const std::string& config) {
 
     if ( updateSubs ) {
         disconnect();
-        renderer_.clearPastCharts();
+        clearPriceHistory();
+
         if (configId != root["id"].asInt()) {
             currentSymbolIndex_ = -1;
             nextSwitchTime = 0;
@@ -156,10 +169,6 @@ void Session::configUpdate(const std::string& config) {
         }
         config_->setSubsList(subsList);
         config_->setApiSubsList(apiSubsList);
-        
-        for (const auto& symbol : config_->getApiSubsList()) {
-            latestPrices_[symbol] = MISSING_PRICE;
-        }
     }
     
     if (firstRun || config_->getSwitchTime() != root["switch_time"].asInt()) {
@@ -200,14 +209,24 @@ void Session::controllerSubscribe() {
 
         controllerClient_->set_close_handler([](websocket_close_status status, const utility::string_t& reason, const std::error_code& error) {
             std::cout << "Connection closed: " << reason << std::endl;
+            connectedToController = false;
         });
 
         std::string uri = CONTROL_URL + config_->getControlToken();
         controllerClient_->connect(U(uri)).then([uri] {
             std::cout << "Connecting to: " << U(uri) << std::endl;
         }).wait();
+
+        connectedToController = true;
     } catch (const std::exception& e) {
         std::cerr << "Exception occurred: " << e.what() << std::endl;
+    }
+}
+
+void Session::clearPriceHistory() {
+    renderer_.clearPastCharts();
+    for (const auto& symbol : config_->getApiSubsList()) {
+        latestPrices_[symbol] = MISSING_PRICE;
     }
 }
 
@@ -218,20 +237,26 @@ void Session::priceUpdateCheck() {
     if (secondsSinceLastUpdate == std::numeric_limits<int>::max()) {
         secondsSinceLastUpdate = PRICE_TIME_INTERVAL;
     }
-    bool temporaryPrice = !(secondsSinceLastUpdate >= PRICE_TIME_INTERVAL &&
-                        (secondsSinceLastUpdate % PRICE_TIME_INTERVAL) < ALLOWABLE_DISSYNCHRONIZATION_TIME);
+    
+
+    bool savePrice = (secondsSinceLastUpdate >= PRICE_TIME_INTERVAL &&
+                     (secondsSinceLastUpdate % PRICE_TIME_INTERVAL) < ALLOWABLE_DISSYNCHRONIZATION_TIME);
+
+    if ( savePrice && secondsSinceLastUpdate >= PRICE_TIME_INTERVAL*2 ) {
+        renderer_.clearPastCharts();
+    }
 
     std::cout << "Seconds since last update: " << secondsSinceLastUpdate << std::endl;
     for (const auto& symbol : config_->getApiSubsList()) {
         double price = latestPrices_[symbol];
-        if (!temporaryPrice) {
+        if (savePrice) {
             if (price != MISSING_PRICE) {
                 dataStorage_->savePrice(symbol, price);
                 std::cout << "Saved price: " << symbol << " " << price << std::endl;
             }
-            latestPrices_[symbol] = MISSING_PRICE;
+            // latestPrices_[symbol] = MISSING_PRICE;
         }
-        render(symbol, price, temporaryPrice, false);
+        render(symbol, price, savePrice, false);
     }
 }
 
@@ -243,10 +268,19 @@ void Session::runForever() {
 
     while (!interruptReceived) {
         if (priceConfigMutex.try_lock()) {
-            if (!connected) {
-                std::cout << "Client unexpectedly disconnected. Reconnecting..." << std::endl;
+            if (!connectedToApi || time(NULL) > lastUpdateTime + 20) {
+                std::cout << "Reconnecting..." << std::endl;
                 disconnect();
                 subscribe();
+                if (time(NULL) > lastUpdateTime + 20){
+                    lastUpdateTime = time(NULL);
+                }
+            }
+
+            if (!connectedToController) {
+                std::cout << "Reconnecting to remote controller..." << std::endl;
+                disconnectController();
+                controllerSubscribe();
             }
 
             priceUpdateCheck();
@@ -268,12 +302,12 @@ void Session::primarySymbolSwitchCheck() {
         currentSymbolIndex_ = (currentSymbolIndex_ + 1) % config_->getApiSubsList().size();
         std::string symbol = config_->getApiSubsList()[currentSymbolIndex_];
         double price = latestPrices_[config_->getApiSubsList()[currentSymbolIndex_]];
-        render(symbol, price, true, true);
+        render(symbol, price, false, true);
         nextSwitchTime = time(nullptr) + config_->getSwitchTime();
     }
 }
 
-void Session::render(std::string symbol, double price, bool temporaryPrice, bool fully){
+void Session::render(std::string symbol, double price, bool savePrice, bool fully){
     if (fully) {
         renderer_.renderEntireSymbol(currentSymbolIndex_, latestPrices_[config_->getApiSubsList()[currentSymbolIndex_]]);
     } else {
@@ -282,7 +316,7 @@ void Session::render(std::string symbol, double price, bool temporaryPrice, bool
             renderer_.renderPrice(symbol, price);
             renderer_.renderGain(symbol, price);
         }
-        renderer_.updateChart(symbol, price, temporaryPrice, isPrimarySymbol);
+        renderer_.updateChart(symbol, price, savePrice, isPrimarySymbol);
     }
 }
 

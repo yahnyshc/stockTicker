@@ -25,20 +25,27 @@ private:
     void subscribeToSymbol(const std::string& symbol);
     void processMessage(const std::string& update);
     void priceUpdateCheck();
-    void render(std::string symbol, double price, bool temporaryPrice, bool fully);
+    void clearPriceHistory();
+    void render(std::string symbol, double price, bool savePrice, bool fully);
     void primarySymbolSwitchCheck();
     void configUpdate(const std::string& config);
-    void controllerSubscribe();
     void subscribe();
     void disconnect();
+    void controllerSubscribe();
+    void disconnectController();
 
     std::unique_ptr<websocket_callback_client> client_;
     std::unique_ptr<websocket_callback_client> controllerClient_;
+
     Config *config_ = Config::getInstance(CONFIG_FILE);
+
     DataStorage* dataStorage_ = DataStorage::getInstance();
+
     Renderer renderer_;
-    int currentSymbolIndex_ = -1;
+
     std::unordered_map<std::string, double> latestPrices_;
+
+    std::mutex priceConfigMutex;  // Mutex for price and config updates
 };
 
 #endif // SESSION_HPP
