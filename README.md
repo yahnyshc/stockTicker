@@ -1,6 +1,6 @@
 # LED Stock Ticker on Raspberry Pi
 
-This project replicates the functionality of real-time LED Stock Ticker displays commonly found in marketplaces like [Etsy Led Stock Ticker](https://www.etsy.com/uk/market/led_stock_ticker).
+This project is a DIY real-time LED stock ticker display, inspired by similar products available on platforms like [Etsy](https://www.etsy.com/uk/market/led_stock_ticker). The project leverages a Raspberry Pi, a 64x32 RGB LED matrix, and financial data APIs to deliver up-to-the-minute price updates for various assets, including stocks, cryptocurrencies, ETFs, forex pairs, indices, and commodities.
 
 ![btc](https://github.com/user-attachments/assets/db0b8be3-398d-4cb7-8aee-a99973983060)
 ![nvda](https://github.com/user-attachments/assets/755b3c21-53be-4728-9978-78e33f46a1fe)
@@ -11,15 +11,17 @@ This project replicates the functionality of real-time LED Stock Ticker displays
 
 https://github.com/user-attachments/assets/af0f0682-fe0a-4485-b2ba-68c3ebee7705
 
+## Overview
+The LED stock ticker display is designed to visually present real-time financial data on a bright and colorful RGB LED matrix. It’s powered by a Raspberry Pi and features a multi-threaded system for efficient data handling and smooth display updates. The system is capable of rendering asset logos, symbol names, daily percentage changes, and mini-price charts.
+
 ## Features
 
-- Developed a real-time LED stock ticker using C++, PostgreSQL, and Raspberry Pi.
-- Utilized WebSockets to interact with financial data APIs for real-time price updates.
-- Applied observer design pattern to control the ticker with WebSocket connection to Spring Boot back-end.
-- Enabled support for stocks, ETFs, crypto, forex, indices, and commodities subscriptions.
-- Designed a multithreading system for efficient data processing and smooth display updates.
-- Created visualization price charts with 1-minute intervals and past data stored in a PostgreSQL database.
-- Implemented rendering of logos, symbol names, and daily percentage gain/loss on a 64x32 RGB LED display.
+- **Real-Time Data Updates**: Utilizes WebSockets to fetch live data from financial APIs like FinnHub.
+- **Support for Multiple Asset Classes**: Display prices and charts for stocks, ETFs, cryptocurrencies, forex pairs, indices, and commodities.
+- **Customizable Display**: Choose between displaying asset logos with price info or full 64-column price charts.
+- **Multithreading**: Ensures smooth and responsive operation, even with multiple data streams.
+- **Data Storage**: Price data is stored in a PostgreSQL database, enabling historical analysis and charting.
+- **Web-Based Control**: Configure the ticker, manage API keys, and customize subscriptions via a web interface.
 
 ## Hardware Requirements
 
@@ -90,4 +92,4 @@ Don't forget to install the necessary [Adafruit-Hat drivers](https://learn.adafr
 - MIT License
 - Premake: Licensed under BSD 3-Clause (see included LICENSE.txt for more details).
 
-Enjoy your real-time LED stock ticker display!
+With this setup, you can build a custom, real-time stock ticker display that not only enhances your space but keeps you updated with the latest market trends. Enjoy creating your personalized LED stock ticker!
