@@ -2,18 +2,24 @@
 
 This project replicates the functionality of real-time LED Stock Ticker displays commonly found in marketplaces like [Etsy Led Stock Ticker](https://www.etsy.com/uk/market/led_stock_ticker).
 
-![nvda](https://github.com/user-attachments/assets/5607ae33-e602-418f-be7a-fbd2ed3eac9c)
-![btc](https://github.com/user-attachments/assets/e4434b13-45bf-4955-840d-41fdbb119f1a)
+![btc](https://github.com/user-attachments/assets/db0b8be3-398d-4cb7-8aee-a99973983060)
+![nvda](https://github.com/user-attachments/assets/755b3c21-53be-4728-9978-78e33f46a1fe)
+![gbpusd](https://github.com/user-attachments/assets/39e344bb-c2a8-45b6-95f7-0652697ac3d7)
+![nsdq](https://github.com/user-attachments/assets/e9db7ec4-9b80-41c9-bf21-d238a9c810f4)
 
+## Video
+
+https://github.com/user-attachments/assets/af0f0682-fe0a-4485-b2ba-68c3ebee7705
 
 ## Features
 
-- **Real-time Market Prices**: Fetches real-time prices for stocks, ETFs, and cryptocurrencies using websocket connection with [FinnHub API](https://finnhub.io).
-- **1-Minute Candlestick Charts**: Displays chart(up to 64 columns) using the last received price and past data stored in a PostgreSQL database.
-- **Daily Gains/Losses**: Shows today's gain or loss in percentage.
-- **Logos Display**: Displays logos for the subscribed items.
-- **Multiple subscriptions** When multiple subscriptions are specified in the config file, the ticker switches between them every 5 seconds.
-- **Visualization**: Visualization of the above features on the bright RGB LED display using GPIO pins interaction.
+- Developed a real-time LED stock ticker using C++, PostgreSQL, and Raspberry Pi.
+- Utilized WebSockets to interact with financial data APIs for real-time price updates.
+- Applied observer design pattern to control the ticker with WebSocket connection to Spring Boot back-end.
+- Enabled support for stocks, ETFs, crypto, forex, indices, and commodities subscriptions.
+- Designed a multithreading system for efficient data processing and smooth display updates.
+- Created visualization price charts with 1-minute intervals and past data stored in a PostgreSQL database.
+- Implemented rendering of logos, symbol names, and daily percentage gain/loss on a 64x32 RGB LED display.
 
 ## Hardware Requirements
 
@@ -21,6 +27,12 @@ This project replicates the functionality of real-time LED Stock Ticker displays
 - Adafruit 64x32 RGB Matrix
 - Adafruit Bonnet
 - Power Supply
+
+## Configure using website
+
+To control the configuration, obtain the API key and set up subscriptions, logos, and API names using [stock-ticker-remote](https://stock-ticker-remote.link)
+
+[Stock Ticker Remote Github](https://github.com/yahnyshc/stockTickerRemote)
 
 ## Getting Started
 
@@ -40,43 +52,30 @@ Don't forget to install the necessary [Adafruit-Hat drivers](https://learn.adafr
 
 5. **Configuration**:
 
-- Create a config file named ws.cfg in the root directory with the following contents:
+- Create a config file named config.cfg in the root directory with the following contents:
     ```bash
     API_Token=<FinnHub API Key>
+    Control_API_Token=<API Key obtained from stock-ticker-remote.link> (optional)
 
-    # The values will be accumulated so all of the symbols will be subscribed for
-    Symbol_List=GOOGL
-    Symbol_List=NVDA
-    Symbol_List=BINANCE:BTCUSDT
-    Symbol_List=SPY
-    Symbol_List=IC MARKETS:1
-    Symbol_List=IC MARKETS:2
-
-    # Mapping from the symbol name to the logo name on https://financialmodelingprep.com/image-stock/<logo>.png
-    # If no mapping is specified, then the logo will not be rendered and the extended price chart will cover the logo screen section.
-    Icon_Mapping=IC MARKETS:1 -> EURUSD
-    Icon_Mapping=IC MARKETS:2 -> GBPUSD
-    Icon_Mapping=BINANCE:BTCUSDT -> BTCUSD
+    # This doesn't have to be configured if Control_API_Token is specified.
+    Subs_list= BTC NVDA 
+    Api_Subs_list = COINBASE:BTC-USD NVDA
+    Logo_Subs_list = BTCUSD NVDA
 
     Logo_Size=23
 
-    # Determines whether to display logos or instead display full 64 column price chart.
+    # Determines whether to display logos or instead display a full 64-column price chart.
     Render_Logos=true
     ...
     # See Config.cpp to find out about more config options
 
-6. Build and Run:
+6. **Build and Run**:
 
    The project follows Core - App architecture.
 
     ```bash
     make
     ./Binaries/<OS>/Debug/App/App
-
-## Video
-
-https://github.com/user-attachments/assets/3c610362-67a1-4644-8a2b-8b2a6e6fb934
-
 
 ## Prototype
 
