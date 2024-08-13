@@ -2,14 +2,14 @@
 
 This project is a DIY real-time LED stock ticker display, inspired by similar products available on platforms like [Etsy](https://www.etsy.com/uk/market/led_stock_ticker). The project leverages a Raspberry Pi, a 64x32 RGB LED matrix, and financial data APIs to deliver up-to-the-minute price updates for various assets, including stocks, cryptocurrencies, ETFs, forex pairs, indices, and commodities.
 
-![btc](https://github.com/user-attachments/assets/db0b8be3-398d-4cb7-8aee-a99973983060)
-![nvda](https://github.com/user-attachments/assets/755b3c21-53be-4728-9978-78e33f46a1fe)
-![gbpusd](https://github.com/user-attachments/assets/39e344bb-c2a8-45b6-95f7-0652697ac3d7)
-![nsdq](https://github.com/user-attachments/assets/e9db7ec4-9b80-41c9-bf21-d238a9c810f4)
+![NVDA](https://github.com/user-attachments/assets/9d01dc58-78ed-4307-bb92-516d0bceb419)
+![BTC](https://github.com/user-attachments/assets/b91ffbd6-f388-45c5-8e51-bffc0ba75438)
+![GBPUSD](https://github.com/user-attachments/assets/ca922ec2-4a53-4412-9ee2-b2dff9759964)
+![NDAQ](https://github.com/user-attachments/assets/63d27c2a-dc29-4f24-963d-16f899e2aa21)
 
 ## Video
 
-https://github.com/user-attachments/assets/af0f0682-fe0a-4485-b2ba-68c3ebee7705
+![Demo](https://github.com/user-attachments/assets/590db6de-6775-465e-a527-f10d186da9fb)
 
 ## Overview
 The LED stock ticker display is designed to visually present real-time financial data on a bright and colorful RGB LED matrix. It’s powered by a Raspberry Pi and features a multi-threaded system for efficient data handling and smooth display updates. The system is capable of rendering asset logos, symbol names, daily percentage changes, and mini-price charts.
